@@ -3,11 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.mycompany</groupId>
-	<artifactId>opportunity-transaction</artifactId>
+	<artifactId>sf-opportunity-project</artifactId>
 	<version>1.0.0-SNAPSHOT</version>
 	<packaging>mule-application</packaging>
 
-	<name>opportunity-transaction_project</name>
+	<name>sf-opportunity-project</name>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -29,9 +29,6 @@
 				<artifactId>mule-maven-plugin</artifactId>
 				<version>${mule.maven.plugin.version}</version>
 				<extensions>true</extensions>
-				<configuration>
-					<classifier>mule-application</classifier>
-				</configuration>
 			</plugin>
 		</plugins>
 	</build>
@@ -53,12 +50,6 @@
 			<groupId>org.mule.connectors</groupId>
 			<artifactId>mule-file-connector</artifactId>
 			<version>1.5.0</version>
-			<classifier>mule-plugin</classifier>
-		</dependency>
-		<dependency>
-			<groupId>org.mule.connectors</groupId>
-			<artifactId>mule-sftp-connector</artifactId>
-			<version>1.6.1</version>
 			<classifier>mule-plugin</classifier>
 		</dependency>
 		<dependency>

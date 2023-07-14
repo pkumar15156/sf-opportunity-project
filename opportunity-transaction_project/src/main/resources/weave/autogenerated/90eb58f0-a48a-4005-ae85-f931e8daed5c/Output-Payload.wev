@@ -1,0 +1,5 @@
+%dw 2.0
+
+type auto_90eb58f0_a48a_4005_ae85_f931e8daed5c_Output_Payload = Any {"header": "true",
+"separator": "|"}
+

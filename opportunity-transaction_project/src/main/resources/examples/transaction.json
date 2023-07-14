@@ -1,0 +1,28 @@
+[
+ {
+   "Account Number": 1015711,
+   "Invoice Number": "B1-64461028",
+   "Invoice Date": "2022/12/24",
+   "Invoice Time Month Key": 202212,
+   "Invoice Source": "US CLOUD",
+   "Transaction Type": "INVOICE",
+   "Amount": 66.39,
+   "Currency Code": "USD",
+   "Device Number": "",
+   "Product Group": "AWS Account #564371287397 (Funeral Zone Infrastructure)",
+   "Product Type": "AWS DATATRANSFER (NOVEMBER 2022)",
+   "Product Type Charge Type": "INFRASTRUCTURE",
+   "Aging Bucket": 0,
+   "Account Key": "1015711-US_CLOUD",
+   "Line Of Business": "US_CLOUD",
+   "First Invoice Date": "2016/09/24",
+   "Contract End Date": "2099/01/01",
+   "Line Item Number": "2212_340197737686142047_0",
+   "GL Account": 417000,
+   "GL Product Code": 7168,
+   "Proserv Project ID": "",
+   "Commission Flag": "",
+   "Reserved Field 9": "",
+   "Reserved Field 10": ""
+ }
+]

@@ -6,9 +6,7 @@
 http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-	<file:config name="File_Config" doc:name="File Config" doc:id="55179d75-b21f-4f22-891e-30ed93fe3030" >
-		<file:connection />
-	</file:config>
+	
 	<flow name="opportunity-transactionFlow" doc:id="0ed35705-1b89-4c77-86d4-e0f341fd42c7" >
 		<file:listener doc:name="On New or Updated File" doc:id="b12ad7b5-2f97-4693-ac4f-9df2328bac52" config-ref="File_Config" directory='C:\Users\ssandrapangu\OneDrive - Phidimensions_O365\Desktop\transactions\input' outputMimeType="application/csv; separator=|; header=true" timeBetweenSizeCheckUnit="HOURS" recursive="false" moveToDirectory="C:\Users\ssandrapangu\OneDrive - Phidimensions_O365\Desktop\transactions\input\ABC" overwrite="true">
 			<scheduling-strategy >
@@ -24,9 +22,11 @@ payload]]></ee:set-payload>
 			</ee:message>
 			<ee:variables />
 		</ee:transform>
-		<choice doc:name="Choice" doc:id="d4a7a1c6-7e3b-4300-9f53-a599019687ce" >
-			<when expression='#[payload.InvoiceSource contains  "Datapipe"]' >
-				<ee:transform doc:name="Transform Message" doc:id="2d04f9b7-c765-4d7b-b470-5955eea8ca61">
+		<foreach doc:name="For Each" doc:id="820f4dd4-f8d5-4509-9118-ea957a841443" collection="#[payload]">
+			<choice doc:name="Choice" doc:id="d4a7a1c6-7e3b-4300-9f53-a599019687ce">
+			<when expression='#[payload.InvoiceSource ==  "Datapipe"]'>
+				<flow-ref doc:name="Invoice-source-flow = Datapipe" doc:id="2e18ca4e-6741-4a92-a11b-bab37b9f5b1e" name="datapipe-flow" />
+					<ee:transform doc:name="Transform Message" doc:id="2d04f9b7-c765-4d7b-b470-5955eea8ca61">
 					<ee:message>
 						<ee:set-payload><![CDATA[%dw 2.0
 output application/json
@@ -34,12 +34,12 @@ output application/json
 payload filter ($.InvoiceSource contains  "Datapipe")]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
-				<flow-ref doc:name="Invoice-source-flow = Datapipe" doc:id="2e18ca4e-6741-4a92-a11b-bab37b9f5b1e" name="datapipe-flow"/>
 			</when>
-			<otherwise >
-				<logger level="INFO" doc:name="Logger" doc:id="51c6d339-0923-4d7b-83eb-9f1e1d0fd5e9" message="#[payload]"/>
-				<flow-ref doc:name="Invoice-source-flow = others" doc:id="132718fa-80ac-4679-94fd-d1ffed978786" name="invoice-source-flow"/>
+			<otherwise>
+				<flow-ref doc:name="Invoice-source-flow = others" doc:id="132718fa-80ac-4679-94fd-d1ffed978786" name="invoice-source-flow" />
+					<logger level="INFO" doc:name="Logger" doc:id="51c6d339-0923-4d7b-83eb-9f1e1d0fd5e9" message="#[payload]" />
 			</otherwise>
 		</choice>
+		</foreach>
 	</flow>
 </mule>

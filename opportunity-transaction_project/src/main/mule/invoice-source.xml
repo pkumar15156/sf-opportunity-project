@@ -6,9 +6,7 @@
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
-	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="c3252e87-3d69-4e24-88c8-69e02cf65285" >
-		<salesforce:basic-connection username="ssandrapangu@phidimensions.com" password="PhiDi#2023" securityToken="EDNBJgbjCYBrMMgY5ghiROfjC" />
-	</salesforce:sfdc-config>
+	
 	<sub-flow name="invoice-source-flow" doc:id="121b5533-c3b9-4193-94ea-18481e3c2796" >
 		<logger level="INFO" doc:name="Logger" doc:id="cebd1dfd-7270-49d0-800d-4e862b8eee0c" />
 		<salesforce:query-all doc:name="Query all" doc:id="ae3fc78a-3917-408b-889c-f11adcbc6847" config-ref="Salesforce_Config">

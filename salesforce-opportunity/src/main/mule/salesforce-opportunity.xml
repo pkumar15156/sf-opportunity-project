@@ -38,28 +38,200 @@ payload]]></ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 					<flow-ref doc:name="datapipe-vs-others-sub_Flow" doc:id="f0f81304-319a-4088-800f-407136330377" name="datapipe-vs-others-sub_Flow"/>
-					<batch:aggregator doc:name="Batch Aggregator (1000)" doc:id="95aaa711-e798-4c28-8a5d-b1766575088b" size="1000">
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="95aaa711-e798-4c28-8a5d-b1766575088b" streaming="true" preserveMimeTypes="true">
 						<logger level="INFO" doc:name="start-log" doc:id="a14630b6-8ea8-46cb-8bb4-5b77216651ee" />
-						<ee:transform doc:name="Transform Message" doc:id="34122ad3-9027-41ef-bae6-ca29f72f10ac" >
+						<ee:transform doc:name="storing-final-response" doc:id="cbd88ca1-7f2d-4ddf-8e1b-a5064d9e134a" >
+							<ee:message >
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="finalResponse" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+						<ee:transform doc:name="TXSTA-file-payload" doc:id="34122ad3-9027-41ef-bae6-ca29f72f10ac" >
 							<ee:message >
 								<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv header = true, separator = " "
+---
+vars.finalResponse[1] map{
+	"ORDERID": vars.finalResponse[0]."Line Item Number",
+	"LINENUMBER": 1,
+	"SUBLINENUMBER": 1,
+	"EVENTTYPEID": vars.finalResponse[0]."Transaction Type",
+	"ACCOUNTINGDATE": "",
+	"PRODUCTID": "",
+	"PRODUCTNAME": "",
+	"PRODUCTDESCRIPTION": "",
+	"UNITTYPEFORVALUE 2"  : "GC",
+	"NUMBEROFUNITS": "",
+	"UNITVALUE": "",
+	"UNITTYPEFORUNITVALUE 2": "",
+	"COMPENSATIONDATE": vars.finalResponse[0]."Invoice Date",
+	"ALTERNATEORDERNUMBER": vars.finalResponse[0]."Invoice Number",
+	"DATASOURCE": "",
+	"NATIVECURRENCY": vars.finalResponse[0]."Currency Code",
+	"NATIVECURRENCYAMOUNT": vars.finalResponse[0].Amount,
+	"DISCOUNTPERCENT": "",
+	"DISCOUNTTYPE": "",
+	"BILLTOCUSTID": "",
+	"BILLTOCONTACT": "",
+	"BILLTOCOMPANY": "",
+	"BILLTOAREACODE": "",
+	"BILLTOPHONE": "",
+	"BILLTOFAX": "",
+	"BILLTOADDRESS1": "",
+	"BILLTOADDRESS2": "",
+	"BILLTOADDRESS3": "",
+	"BILLTOCITY": "",
+	"BILLTOSTATE": "",
+	"BILLTOCOUNTRY": "",
+	"BILLTOPOSTALCODE": "",
+	"BILLTOINDUSTRY": "",
+	"BILLTOGEOGRAPHY": "",
+	"SHIPTOCUSTID": "",
+	"SHIPTOCONTACT": "",
+	"SHIPTOCOMPANY": "",
+	"SHIPTOAREACODE": "",
+	"SHIPTOPHONE": "",
+	"SHIPTOFAX": "",
+	"SHIPTOADDRESS1": "",
+	"SHIPTOADDRESS2": "",
+	"SHIPTOADDRESS3": "",
+	"SHIPTOCITY": "",
+	"SHIPTOSTATE": "",
+	"SHIPTOCOUNTRY": "",
+	"SHIPTOPOSTALCODE": "",
+	"SHIPTOINDUSTRY": "",
+	"SHIPTOGEOGRAPHY": "",
+	"OTHERTOCUSTID": "",
+	"OTHERTOCONTACT": "",
+	"OTHERTOCOMPANY": "",
+	"OTHERTOAREACODE": "",
+	"OTHERTOPHONE": "",
+	"OTHERTOFAX": "",
+	"OTHERTOADDRESS1": "",
+	"OTHERTOADDRESS2": "",
+	"OTHERTOADDRESS3": "",
+	"OTHERTOCITY": "",
+	"OTHERTOSTATE": "",
+	"OTHERTOCOUNTRY": "",
+	"OTHERTOPOSTALCODE": "",
+	"OTHERTOINDUSTRY": "",
+	"OTHERTOGEOGRAPHY": "",
+	"REASONID": "",
+	"COMMENTS": "",
+	"GENERICATTRIBUTE3": vars.finalResponse[0]."Device Number",
+	"GENERICATTRIBUTE4": vars.finalResponse[1].FinalOpportunityType[0],
+	"GENERICATTRIBUTE5": vars.finalResponse[1].PartnerType[0],
+	"GENERICATTRIBUTE6": vars.finalResponse[1].PartnerAccountName[0],
+	"GENERICATTRIBUTE7": vars.finalResponse[1].OpportunityCategory[0],
+	"GENERICATTRIBUTE8": "",
+	"GENERICATTRIBUTE9": vars.finalResponse[1].PartnerAccountOwner[0],
+	"GENERICATTRIBUTE10": vars.finalResponse[1].PartnerAccountOwnerRole[0],
+	"GENERICATTRIBUTE11": vars.finalResponse[1].PartnerContractType[0],
+	"GENERICATTRIBUTE12": vars.finalResponse[1].CommissionRole[0],
+	"GENERICATTRIBUTE13": vars.finalResponse[1].OracleVendorId[0],
+	"GENERICATTRIBUTE14": "",
+	"GENERICATTRIBUTE21": vars.finalResponse[0]."Invoice Source",
+	"GENERICATTRIBUTE22": vars.finalResponse[0]."Product Group",
+	"GENERICATTRIBUTE23": vars.finalResponse[0]."Product Type",
+	"GENERICATTRIBUTE24": vars.finalResponse[0]."Product Type Charge Type",
+	"GENERICATTRIBUTE25": vars.finalResponse[1].PartnerAccountId[0],
+	"GENERICATTRIBUTE27": vars.finalResponse[1].PartnerAccountType[0],
+	"GENERICATTRIBUTE28": vars.finalResponse[1].PartnerAccountSubType[0],
+	"GENERICATTRIBUTE31": vars.finalResponse[0]."Account Key",
+	"UNITTYPEFORGENERICNUMBER4": "",
+	"GENERICNUMBER5": "",
+	"UNITTYPEFORGENERICNUMBER5": "",
+	"GENERICNUMBER6": "",
+	"UNITTYPEFORGENERICNUMBER6": "",
+	"GENERICDATE1": vars.finalResponse[1].CloseDate[0],
+	"GENERICDATE4": vars.finalResponse[0]."Contract End Date",
+	"GENERICDATE6": "",
+	"GENERICBOOLEAN1": "",
+	"GENERICBOOLEAN2": "",
+	"GENERICBOOLEAN3": "",
+	"GENERICBOOLEAN4": "",
+	"GENERICBOOLEAN5": "",
+	"GENERICBOOLEAN6": ""
+	}]]></ee:set-payload>
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
 output application/java
 ---
-{
-}]]></ee:set-payload>
-							</ee:message>
-						</ee:transform>
-						<file:write doc:name="Write-TXSTA" doc:id="fa2c34ae-f361-4bf6-89f6-2dfde82d3220" config-ref="File_Config" path="${file.writePath}"/>
-						<ee:transform doc:name="Transform Message" doc:id="c673a13a-945b-419b-a81b-5a7488687da0" >
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "TXSTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
+							</ee:variables>
+						
+</ee:transform>
+						<file:write doc:name="Write-TXSTA" doc:id="fa2c34ae-f361-4bf6-89f6-2dfde82d3220" config-ref="File_Config" path="#[vars.path]"/>
+						<ee:transform doc:name="TXTA-file-payload" doc:id="c673a13a-945b-419b-a81b-5a7488687da0" >
 							<ee:message >
 								<ee:set-payload ><![CDATA[%dw 2.0
-output application/java
+output application/csv header = true, separator = " "
 ---
-{
+vars.finalResponse[1] map{
+	"ORDERID": vars.finalResponse[0]."Line Item Number",
+	"LINENUMBER": 1,
+	"SUBLINENUMBER": 1,
+	"EVENTTYPEID": vars.finalResponse[0]."Transaction Type",
+    "PAYEEID": vars.finalResponse[1].ParticipantID[0],
+    "PAYEETYPE": "Participant",
+    "POSITIONNAME": "",
+    "TITLENAME": "",
+    "GENERICATTRIBUTE1": "",
+    "GENERICATTRIBUTE2": "",
+    "GENERICATTRIBUTE3": "",
+    "GENERICATTRIBUTE4": "",
+    "GENERICATTRIBUTE5": "",
+    "GENERICATTRIBUTE6": "",
+    "GENERICATTRIBUTE7": "",
+    "GENERICATTRIBUTE8": "",
+    "GENERICATTRIBUTE9": "",
+    "GENERICATTRIBUTE10": "",
+    "GENERICATTRIBUTE11": "",
+    "GENERICATTRIBUTE12": "",
+    "GENERICATTRIBUTE13": "",
+    "GENERICATTRIBUTE14": "",
+    "GENERICATTRIBUTE15": "",
+    "GENERICATTRIBUTE16": "",
+    "GENERICNUMBER1": "",
+    "UNITTYPEFORGENERICNUMBER1": "",
+    "GENERICNUMBER2": "",
+    "UNITTYPEFORGENERICNUMBER2": "",
+    "GENERICNUMBER3": "",
+    "UNITTYPEFORGENERICNUMBER3": "",
+    "GENERICNUMBER4": "",
+    "UNITTYPEFORGENERICNUMBER4": "",
+    "GENERICNUMBER5": "",
+    "UNITTYPEFORGENERICNUMBER5": "",
+    "GENERICNUMBER6": "",
+    "UNITTYPEFORGENERICNUMBER6": "",
+    "GENERICDATE1": "",
+    "GENERICDATE2": "",
+    "GENERICDATE3": "",
+    "GENERICDATE4": "",
+    "GENERICDATE5": "",
+    "GENERICDATE6": "",
+    "GENERICBOOLEAN1": "",
+    "GENERICBOOLEAN2": "",
+    "GENERICBOOLEAN3": "",
+    "GENERICBOOLEAN4": "",
+    "GENERICBOOLEAN5": "",
+    "GENERICBOOLEAN6": ""
 }]]></ee:set-payload>
 							</ee:message>
-						</ee:transform>
-						<file:write doc:name="Write-TXTA" doc:id="2da29880-3565-4337-b3ab-956811b3bcf4" path="${file.writePath}"/>
+							<ee:variables >
+								<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
+output application/java
+---
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "TXTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
+							</ee:variables>
+						
+</ee:transform>
+						<file:write doc:name="Write-TXTA" doc:id="2da29880-3565-4337-b3ab-956811b3bcf4" path="#[vars.path]"/>
 						<logger level="INFO" doc:name="end-log" doc:id="a09162f3-faf0-4f1c-9f23-0c47caa3e158" />
 					</batch:aggregator>
 				</batch:step>

@@ -1,13 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
 	<sub-flow name="us-cloud-sub-flow" doc:id="219ac40b-a39f-4508-8d8f-7939e795e1d0" >
 		<logger level="INFO" doc:name="start-log" doc:id="98b3070a-260c-4efc-8bfd-eecce2804066" />
+		<try doc:name="Try" doc:id="fc217961-5676-4786-bb9d-f6bb1ca131f5" >
+			<salesforce:query doc:name="Query" doc:id="2acb69cd-3823-439e-9d3f-77c2793ff26c" config-ref="Salesforce_Config">
+			<error-mapping sourceType="SALESFORCE:INVALID_INPUT" targetType="OPPORTUNITY:ACCOUNT-NOT-FOUND" />
+				<salesforce:salesforce-query><![CDATA[SELECT FIELDS(ALL) FROM Opportunity where AccountId = :AccountId limit 200]]></salesforce:salesforce-query>
+			<salesforce:parameters><![CDATA[#[output application/java
+---
+{
+	"AccountId" : payload."Account Number"
+}]]]></salesforce:parameters>
+		</salesforce:query>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="e5752760-9a87-43a2-80d1-637ab93c0af2" >
+					<raise-error doc:name="Raise error" doc:id="20f7abf5-f9f1-45a6-9847-06615a2d2e70" type="SALESFORCE:INVALID_INPUT" description='"This will not accept the account not present in salesforce"'/>
+					<ee:transform doc:name="Transform Message" doc:id="bd01c5d4-61c1-4fc6-bec0-203f334d355e" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv header = true, separator = " "
+---
+{
+	"ID": payload."Account Number",
+	"Error": error.description
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
+output application/java
+---
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "Error-" ++ payload."Account Number" ++ ".csv"]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<flow-ref doc:name="common-write-sub-flow" doc:id="a32b1414-ecbb-4657-be67-c5b1d44fa77c" name="common-write-sub-flow"/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="2161acdc-d111-4b84-a798-071cdccaf7b8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
 		<logger level="INFO" doc:name="end-log" doc:id="ecf6a352-d4eb-4501-b568-b8d0f6a02dc2" />
+	</sub-flow>
+	<sub-flow name="common-write-sub-flow" doc:id="8f9aaf21-110d-4e47-972c-34aa9f14e4d4" >
+		<file:write doc:name="Write" doc:id="5a4c3bee-99fd-467b-9f6f-46837d2656a1" config-ref="File_Config" path="#[vars.path]"/>
 	</sub-flow>
 	<sub-flow name="datapipe-sub-flow" doc:id="3c42f05f-4da6-427b-af22-1b5b8895fe40" >
 		<logger level="INFO" doc:name="start-log" doc:id="680271dc-45fb-489d-ba74-9a5e28e2a56c" />
@@ -19,176 +65,6 @@ output application/json
 ---
 flatten(vars.accountNumber map ((item, index) -> payload[?($.PartnerAccountId == item)])) 	]]></ee:set-payload>
 			</ee:message>
-		</ee:transform>
-		<ee:transform doc:name="TXSTA-file-payload" doc:id="43583e26-59e5-4f90-817b-cf59a359ef07" >
-			<ee:message >
-			</ee:message>
-			<ee:variables >
-				<ee:set-variable variableName="TXSTA" ><![CDATA[%dw 2.0
-output application/json
----
-payload map{
-	"ORDERID": vars.val."Line Item Number",
-	"LINENUMBER": 1,
-	"SUBLINENUMBER": 1,
-	"EVENTTYPEID": vars.val."Transaction Type",
-	"ACCOUNTINGDATE": "",
-	"PRODUCTID": "",
-	"PRODUCTNAME": "",
-	"PRODUCTDESCRIPTION": "",
-	"UNITTYPEFORVALUE 2"  : "GC",
-	"NUMBEROFUNITS": "",
-	"UNITVALUE": "",
-	"UNITTYPEFORUNITVALUE 2": "",
-	"COMPENSATIONDATE": vars.val."Invoice Date",
-	"ALTERNATEORDERNUMBER": vars.val."Invoice Number",
-	"DATASOURCE": "",
-	"NATIVECURRENCY": vars.val."Currency Code",
-	"NATIVECURRENCYAMOUNT": vars.val.Amount,
-	"DISCOUNTPERCENT": "",
-	"DISCOUNTTYPE": "",
-	"BILLTOCUSTID": "",
-	"BILLTOCONTACT": "",
-	"BILLTOCOMPANY": "",
-	"BILLTOAREACODE": "",
-	"BILLTOPHONE": "",
-	"BILLTOFAX": "",
-	"BILLTOADDRESS1": "",
-	"BILLTOADDRESS2": "",
-	"BILLTOADDRESS3": "",
-	"BILLTOCITY": "",
-	"BILLTOSTATE": "",
-	"BILLTOCOUNTRY": "",
-	"BILLTOPOSTALCODE": "",
-	"BILLTOINDUSTRY": "",
-	"BILLTOGEOGRAPHY": "",
-	"SHIPTOCUSTID": "",
-	"SHIPTOCONTACT": "",
-	"SHIPTOCOMPANY": "",
-	"SHIPTOAREACODE": "",
-	"SHIPTOPHONE": "",
-	"SHIPTOFAX": "",
-	"SHIPTOADDRESS1": "",
-	"SHIPTOADDRESS2": "",
-	"SHIPTOADDRESS3": "",
-	"SHIPTOCITY": "",
-	"SHIPTOSTATE": "",
-	"SHIPTOCOUNTRY": "",
-	"SHIPTOPOSTALCODE": "",
-	"SHIPTOINDUSTRY": "",
-	"SHIPTOGEOGRAPHY": "",
-	"OTHERTOCUSTID": "",
-	"OTHERTOCONTACT": "",
-	"OTHERTOCOMPANY": "",
-	"OTHERTOAREACODE": "",
-	"OTHERTOPHONE": "",
-	"OTHERTOFAX": "",
-	"OTHERTOADDRESS1": "",
-	"OTHERTOADDRESS2": "",
-	"OTHERTOADDRESS3": "",
-	"OTHERTOCITY": "",
-	"OTHERTOSTATE": "",
-	"OTHERTOCOUNTRY": "",
-	"OTHERTOPOSTALCODE": "",
-	"OTHERTOINDUSTRY": "",
-	"OTHERTOGEOGRAPHY": "",
-	"REASONID": "",
-	"COMMENTS": "",
-	"GENERICATTRIBUTE3": vars.val."Device Number",
-	"GENERICATTRIBUTE4": payload.FinalOpportunityType[0],
-	"GENERICATTRIBUTE5": payload.PartnerType[0],
-	"GENERICATTRIBUTE6": payload.PartnerAccountName[0],
-	"GENERICATTRIBUTE7": payload.OpportunityCategory[0],
-	"GENERICATTRIBUTE8": "",
-	"GENERICATTRIBUTE9": payload.PartnerAccountOwner[0],
-	"GENERICATTRIBUTE10": payload.PartnerAccountOwnerRole[0],
-	"GENERICATTRIBUTE11": payload.PartnerContractType[0],
-	"GENERICATTRIBUTE12": payload.CommissionRole[0],
-	"GENERICATTRIBUTE13": payload.OracleVendorId[0],
-	"GENERICATTRIBUTE14": "",
-	"GENERICATTRIBUTE21": vars.val."Invoice Source",
-	"GENERICATTRIBUTE22": vars.val."Product Group",
-	"GENERICATTRIBUTE23": vars.val."Product Type",
-	"GENERICATTRIBUTE24": vars.val."Product Type Charge Type",
-	"GENERICATTRIBUTE25": payload.PartnerAccountId[0],
-	"GENERICATTRIBUTE27": payload.PartnerAccountType[0],
-	"GENERICATTRIBUTE28": payload.PartnerAccountSubType[0],
-	"GENERICATTRIBUTE31": vars.val."Account Key",
-	"UNITTYPEFORGENERICNUMBER4": "",
-	"GENERICNUMBER5": "",
-	"UNITTYPEFORGENERICNUMBER5": "",
-	"GENERICNUMBER6": "",
-	"UNITTYPEFORGENERICNUMBER6": "",
-	"GENERICDATE1": payload.CloseDate[0],
-	"GENERICDATE4": vars.val."Contract End Date",
-	"GENERICDATE6": "",
-	"GENERICBOOLEAN1": "",
-	"GENERICBOOLEAN2": "",
-	"GENERICBOOLEAN3": "",
-	"GENERICBOOLEAN4": "",
-	"GENERICBOOLEAN5": "",
-	"GENERICBOOLEAN6": ""
-	}]]></ee:set-variable>
-			</ee:variables>
-		</ee:transform>
-		<ee:transform doc:name="TXTA-file-payload" doc:id="63f17193-2db7-475a-95fd-2373c1455485" >
-			<ee:message >
-			</ee:message>
-			<ee:variables >
-				<ee:set-variable variableName="TXTA" ><![CDATA[%dw 2.0
-output application/json
----
-payload map{
-	"ORDERID": vars.val."Line Item Number",
-	"LINENUMBER": 1,
-	"SUBLINENUMBER": 1,
-	"EVENTTYPEID": vars.val."Transaction Type",
-    "PAYEEID": payload.ParticipantID[0],
-    "PAYEETYPE": "Participant",
-    "POSITIONNAME": "",
-    "TITLENAME": "",
-    "GENERICATTRIBUTE1": "",
-    "GENERICATTRIBUTE2": "",
-    "GENERICATTRIBUTE3": "",
-    "GENERICATTRIBUTE4": "",
-    "GENERICATTRIBUTE5": "",
-    "GENERICATTRIBUTE6": "",
-    "GENERICATTRIBUTE7": "",
-    "GENERICATTRIBUTE8": "",
-    "GENERICATTRIBUTE9": "",
-    "GENERICATTRIBUTE10": "",
-    "GENERICATTRIBUTE11": "",
-    "GENERICATTRIBUTE12": "",
-    "GENERICATTRIBUTE13": "",
-    "GENERICATTRIBUTE14": "",
-    "GENERICATTRIBUTE15": "",
-    "GENERICATTRIBUTE16": "",
-    "GENERICNUMBER1": "",
-    "UNITTYPEFORGENERICNUMBER1": "",
-    "GENERICNUMBER2": "",
-    "UNITTYPEFORGENERICNUMBER2": "",
-    "GENERICNUMBER3": "",
-    "UNITTYPEFORGENERICNUMBER3": "",
-    "GENERICNUMBER4": "",
-    "UNITTYPEFORGENERICNUMBER4": "",
-    "GENERICNUMBER5": "",
-    "UNITTYPEFORGENERICNUMBER5": "",
-    "GENERICNUMBER6": "",
-    "UNITTYPEFORGENERICNUMBER6": "",
-    "GENERICDATE1": "",
-    "GENERICDATE2": "",
-    "GENERICDATE3": "",
-    "GENERICDATE4": "",
-    "GENERICDATE5": "",
-    "GENERICDATE6": "",
-    "GENERICBOOLEAN1": "",
-    "GENERICBOOLEAN2": "",
-    "GENERICBOOLEAN3": "",
-    "GENERICBOOLEAN4": "",
-    "GENERICBOOLEAN5": "",
-    "GENERICBOOLEAN6": ""
-}]]></ee:set-variable>
-			</ee:variables>
 		</ee:transform>
 		<logger level="INFO" doc:name="end-log" doc:id="d53e62ca-5429-4574-a0e2-4b52ac318d17" />
 	</sub-flow>

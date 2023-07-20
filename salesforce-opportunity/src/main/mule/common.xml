@@ -6,22 +6,27 @@
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
-	<sub-flow name="us-cloud-sub-flow" doc:id="219ac40b-a39f-4508-8d8f-7939e795e1d0" >
+	<flow name="us-cloud-sub-flow" doc:id="fea0096c-769d-4820-a8d9-2b49d7195a13" >
 		<logger level="INFO" doc:name="start-log" doc:id="98b3070a-260c-4efc-8bfd-eecce2804066" />
-		<try doc:name="Try" doc:id="fc217961-5676-4786-bb9d-f6bb1ca131f5" >
-			<salesforce:query doc:name="Query" doc:id="2acb69cd-3823-439e-9d3f-77c2793ff26c" config-ref="Salesforce_Config">
-			<error-mapping sourceType="SALESFORCE:INVALID_INPUT" targetType="OPPORTUNITY:ACCOUNT-NOT-FOUND" />
-				<salesforce:salesforce-query><![CDATA[SELECT FIELDS(ALL) FROM Opportunity where AccountId = :AccountId limit 200]]></salesforce:salesforce-query>
-			<salesforce:parameters><![CDATA[#[output application/java
+		<ee:transform doc:name="var[query]" doc:id="7722f4de-4020-4d6b-963b-f75884cc0497" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="query" ><![CDATA[%dw 2.0
+output text/plain
+var accountId = payload."Account Number"
 ---
-{
-	"AccountId" : payload."Account Number"
-}]]]></salesforce:parameters>
+"SELECT FIELDS(ALL) FROM Opportunity where AccountId = '" ++ accountId ++ "' limit 200"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<try doc:name="Try" doc:id="62500f48-8d17-4a09-9be8-35ef510e4336" >
+			<salesforce:query doc:name="query-sf-opportunity" doc:id="2acb69cd-3823-439e-9d3f-77c2793ff26c" config-ref="Salesforce_Config">
+			<error-mapping sourceType="SALESFORCE:INVALID_INPUT" targetType="OPPORTUNITY:ACCOUNT-NOT-FOUND" />
+			<salesforce:salesforce-query><![CDATA[#[vars.query]]]></salesforce:salesforce-query>
 		</salesforce:query>
 			<error-handler >
-				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="e5752760-9a87-43a2-80d1-637ab93c0af2" >
-					<raise-error doc:name="Raise error" doc:id="20f7abf5-f9f1-45a6-9847-06615a2d2e70" type="SALESFORCE:INVALID_INPUT" description='"This will not accept the account not present in salesforce"'/>
-					<ee:transform doc:name="Transform Message" doc:id="bd01c5d4-61c1-4fc6-bec0-203f334d355e" >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="9ae8afb2-ad43-4f78-a089-0a44b60ab052" type="SALESFORCE:INVALID_INPUT" >
+					<ee:transform doc:name="error-message" doc:id="7b9d17f7-7fff-461f-96b9-36df57c695e0" >
 						<ee:message >
 							<ee:set-payload ><![CDATA[%dw 2.0
 output application/csv header = true, separator = " "
@@ -38,20 +43,20 @@ output application/java
 "C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "Error-" ++ payload."Account Number" ++ ".csv"]]></ee:set-variable>
 						</ee:variables>
 					</ee:transform>
-					<flow-ref doc:name="common-write-sub-flow" doc:id="a32b1414-ecbb-4657-be67-c5b1d44fa77c" name="common-write-sub-flow"/>
+					<flow-ref doc:name="common-write-sub-flow" doc:id="d1a54033-14eb-4d25-b480-ec19aeb11eca" name="common-write-sub-flow" />
 				</on-error-continue>
 			</error-handler>
 		</try>
-		<ee:transform doc:name="Transform Message" doc:id="2161acdc-d111-4b84-a798-071cdccaf7b8" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
+		<ee:transform doc:name="sf-query-response" doc:id="2161acdc-d111-4b84-a798-071cdccaf7b8">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-payload]]></ee:set-payload>
+payload map ($ ++ vars.val)]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 		<logger level="INFO" doc:name="end-log" doc:id="ecf6a352-d4eb-4501-b568-b8d0f6a02dc2" />
-	</sub-flow>
+	</flow>
 	<sub-flow name="common-write-sub-flow" doc:id="8f9aaf21-110d-4e47-972c-34aa9f14e4d4" >
 		<file:write doc:name="Write" doc:id="5a4c3bee-99fd-467b-9f6f-46837d2656a1" config-ref="File_Config" path="#[vars.path]"/>
 	</sub-flow>
@@ -63,7 +68,7 @@ payload]]></ee:set-payload>
 				<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-flatten(vars.accountNumber map ((item, index) -> payload[?($.PartnerAccountId == item)])) 	]]></ee:set-payload>
+(flatten(vars.accountNumber map ((item, index) -> payload[?($.PartnerAccountId == item)]))[0] 	++ vars.val)]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 		<logger level="INFO" doc:name="end-log" doc:id="d53e62ca-5429-4574-a0e2-4b52ac318d17" />

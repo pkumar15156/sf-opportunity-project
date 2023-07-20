@@ -21,7 +21,7 @@ output application/json
 payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<batch:job jobName="salesforce-opportunity-batch-job" doc:id="bd9d4265-c0f7-401e-9dea-7f683f17fb25" >
+		<batch:job jobName="salesforce-opportunity-batch-job" doc:id="bd9d4265-c0f7-401e-9dea-7f683f17fb25" maxFailedRecords="-1">
 			<batch:process-records >
 				<batch:step name="processing-records" doc:id="c09bf2c5-9ca7-4188-bc1f-b1adfdd90ac3" >
 					<ee:transform doc:name="var [accountNumber and val]" doc:id="7254f82f-89d9-4390-8f60-b6533060b988" >
@@ -38,16 +38,16 @@ payload]]></ee:set-variable>
 						</ee:variables>
 					</ee:transform>
 					<flow-ref doc:name="datapipe-vs-others-sub_Flow" doc:id="f0f81304-319a-4088-800f-407136330377" name="datapipe-vs-others-sub_Flow"/>
-					<batch:aggregator doc:name="Batch Aggregator" doc:id="95aaa711-e798-4c28-8a5d-b1766575088b" streaming="true" preserveMimeTypes="true">
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="95aaa711-e798-4c28-8a5d-b1766575088b" preserveMimeTypes="true" size="1000">
 						<logger level="INFO" doc:name="start-log" doc:id="a14630b6-8ea8-46cb-8bb4-5b77216651ee" />
-						<ee:transform doc:name="storing-final-response" doc:id="cbd88ca1-7f2d-4ddf-8e1b-a5064d9e134a" >
+						<ee:transform doc:name="var[final-response]" doc:id="fcb05907-64a0-4403-a58c-d3f058ed1fc2" >
 							<ee:message >
 							</ee:message>
 							<ee:variables >
 								<ee:set-variable variableName="finalResponse" ><![CDATA[%dw 2.0
 output application/json
 ---
-payload]]></ee:set-variable>
+flatten(payload)]]></ee:set-variable>
 							</ee:variables>
 						</ee:transform>
 						<ee:transform doc:name="TXSTA-file-payload" doc:id="34122ad3-9027-41ef-bae6-ca29f72f10ac" >
@@ -55,11 +55,11 @@ payload]]></ee:set-variable>
 								<ee:set-payload ><![CDATA[%dw 2.0
 output application/csv header = true, separator = " "
 ---
-vars.finalResponse[1] map{
-	"ORDERID": vars.finalResponse[0]."Line Item Number",
+vars.finalResponse map{
+	"ORDERID": $."Line Item Number",
 	"LINENUMBER": 1,
 	"SUBLINENUMBER": 1,
-	"EVENTTYPEID": vars.finalResponse[0]."Transaction Type",
+	"EVENTTYPEID": $."Transaction Type",
 	"ACCOUNTINGDATE": "",
 	"PRODUCTID": "",
 	"PRODUCTNAME": "",
@@ -68,11 +68,11 @@ vars.finalResponse[1] map{
 	"NUMBEROFUNITS": "",
 	"UNITVALUE": "",
 	"UNITTYPEFORUNITVALUE 2": "",
-	"COMPENSATIONDATE": vars.finalResponse[0]."Invoice Date",
-	"ALTERNATEORDERNUMBER": vars.finalResponse[0]."Invoice Number",
+	"COMPENSATIONDATE": $."Invoice Date",
+	"ALTERNATEORDERNUMBER": $."Invoice Number",
 	"DATASOURCE": "",
-	"NATIVECURRENCY": vars.finalResponse[0]."Currency Code",
-	"NATIVECURRENCYAMOUNT": vars.finalResponse[0].Amount,
+	"NATIVECURRENCY": $."Currency Code",
+	"NATIVECURRENCYAMOUNT": $.Amount,
 	"DISCOUNTPERCENT": "",
 	"DISCOUNTTYPE": "",
 	"BILLTOCUSTID": "",
@@ -122,33 +122,33 @@ vars.finalResponse[1] map{
 	"OTHERTOGEOGRAPHY": "",
 	"REASONID": "",
 	"COMMENTS": "",
-	"GENERICATTRIBUTE3": vars.finalResponse[0]."Device Number",
-	"GENERICATTRIBUTE4": vars.finalResponse[1].FinalOpportunityType[0],
-	"GENERICATTRIBUTE5": vars.finalResponse[1].PartnerType[0],
-	"GENERICATTRIBUTE6": vars.finalResponse[1].PartnerAccountName[0],
-	"GENERICATTRIBUTE7": vars.finalResponse[1].OpportunityCategory[0],
+	"GENERICATTRIBUTE3": $."Device Number",
+	"GENERICATTRIBUTE4": $.FinalOpportunityType,
+	"GENERICATTRIBUTE5": $.PartnerType,
+	"GENERICATTRIBUTE6": $.PartnerAccountName,
+	"GENERICATTRIBUTE7": $.OpportunityCategory,
 	"GENERICATTRIBUTE8": "",
-	"GENERICATTRIBUTE9": vars.finalResponse[1].PartnerAccountOwner[0],
-	"GENERICATTRIBUTE10": vars.finalResponse[1].PartnerAccountOwnerRole[0],
-	"GENERICATTRIBUTE11": vars.finalResponse[1].PartnerContractType[0],
-	"GENERICATTRIBUTE12": vars.finalResponse[1].CommissionRole[0],
-	"GENERICATTRIBUTE13": vars.finalResponse[1].OracleVendorId[0],
+	"GENERICATTRIBUTE9": $.PartnerAccountOwner,
+	"GENERICATTRIBUTE10": $.PartnerAccountOwnerRole,
+	"GENERICATTRIBUTE11": $.PartnerContractType,
+	"GENERICATTRIBUTE12": $.CommissionRole,
+	"GENERICATTRIBUTE13": $.OracleVendorId,
 	"GENERICATTRIBUTE14": "",
-	"GENERICATTRIBUTE21": vars.finalResponse[0]."Invoice Source",
-	"GENERICATTRIBUTE22": vars.finalResponse[0]."Product Group",
-	"GENERICATTRIBUTE23": vars.finalResponse[0]."Product Type",
-	"GENERICATTRIBUTE24": vars.finalResponse[0]."Product Type Charge Type",
-	"GENERICATTRIBUTE25": vars.finalResponse[1].PartnerAccountId[0],
-	"GENERICATTRIBUTE27": vars.finalResponse[1].PartnerAccountType[0],
-	"GENERICATTRIBUTE28": vars.finalResponse[1].PartnerAccountSubType[0],
-	"GENERICATTRIBUTE31": vars.finalResponse[0]."Account Key",
+	"GENERICATTRIBUTE21": $."Invoice Source",
+	"GENERICATTRIBUTE22": $."Product Group",
+	"GENERICATTRIBUTE23": $."Product Type",
+	"GENERICATTRIBUTE24": $."Product Type Charge Type",
+	"GENERICATTRIBUTE25": $.PartnerAccountId,
+	"GENERICATTRIBUTE27": $.PartnerAccountType,
+	"GENERICATTRIBUTE28": $.PartnerAccountSubType,
+	"GENERICATTRIBUTE31": $."Account Key",
 	"UNITTYPEFORGENERICNUMBER4": "",
 	"GENERICNUMBER5": "",
 	"UNITTYPEFORGENERICNUMBER5": "",
 	"GENERICNUMBER6": "",
 	"UNITTYPEFORGENERICNUMBER6": "",
-	"GENERICDATE1": vars.finalResponse[1].CloseDate[0],
-	"GENERICDATE4": vars.finalResponse[0]."Contract End Date",
+	"GENERICDATE1": $.CloseDate,
+	"GENERICDATE4": $."Contract End Date",
 	"GENERICDATE6": "",
 	"GENERICBOOLEAN1": "",
 	"GENERICBOOLEAN2": "",
@@ -162,7 +162,8 @@ vars.finalResponse[1] map{
 								<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "TXSTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "TXSTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} 
+++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
 							</ee:variables>
 						
 </ee:transform>
@@ -172,12 +173,12 @@ output application/java
 								<ee:set-payload ><![CDATA[%dw 2.0
 output application/csv header = true, separator = " "
 ---
-vars.finalResponse[1] map{
-	"ORDERID": vars.finalResponse[0]."Line Item Number",
+vars.finalResponse map{
+	"ORDERID": $."Line Item Number",
 	"LINENUMBER": 1,
 	"SUBLINENUMBER": 1,
-	"EVENTTYPEID": vars.finalResponse[0]."Transaction Type",
-    "PAYEEID": vars.finalResponse[1].ParticipantID[0],
+	"EVENTTYPEID": $."Transaction Type",
+    "PAYEEID": $.ParticipantID[0],
     "PAYEETYPE": "Participant",
     "POSITIONNAME": "",
     "TITLENAME": "",
@@ -235,11 +236,46 @@ output application/java
 						<logger level="INFO" doc:name="end-log" doc:id="a09162f3-faf0-4f1c-9f23-0c47caa3e158" />
 					</batch:aggregator>
 				</batch:step>
-				<batch:step name="catching-errors" doc:id="702d3d7a-b9d2-48e7-b9d6-7e0827b60551" >
-					<batch:aggregator doc:name="Batch Aggregator" doc:id="47e9003c-25b6-4df1-ab16-33209803d4c1" streaming="true">
-						<logger level="INFO" doc:name="Logger" doc:id="dd7d8bd3-3840-49c8-85fc-679a44e0139f" />
+				<batch:step name="catching-errors" doc:id="702d3d7a-b9d2-48e7-b9d6-7e0827b60551" acceptPolicy="ONLY_FAILURES">
+					<try doc:name="Try" doc:id="e3664643-099c-4f5d-910b-e4f2c9227000" >
+						<raise-error doc:name="SF_OPPORTUNITY:INVALID_ACCOUNT_FOUNDED" doc:id="da8ef67d-c2dc-4df9-9184-c8c7519b8f49" type="SF_OPPORTUNITY:INVALID_ACCOUNT_FOUNDED" description='The account number is not valid.' />
+						<error-handler >
+							<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="55494ed0-4516-42b4-b1aa-4b98971db32e" >
+								<ee:transform doc:name="error-records" doc:id="d14d2263-7948-4e3b-8214-d1fecff25204">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+						<ee:variables>
+						</ee:variables>
+					</ee:transform>
+								<ee:transform doc:name="error-message" doc:id="c2fed048-610f-4620-a3bb-55ba71b10a89">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/csv header = true, separator = " "
+---
+{
+	"ID": payload."Account Number",
+	"Error": error.description
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="path"><![CDATA[%dw 2.0
+output application/java
+---
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "Error-" ++ payload."Account Number" ++ ".csv"]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+								<flow-ref doc:name="common-write-sub-flow" doc:id="a8b60a07-2be4-4afb-849c-31eb4463431b" name="common-write-sub-flow" />
+							</on-error-propagate>
+						</error-handler>
+					</try>
+					<logger level="INFO" doc:name="end-log" doc:id="589d5e84-2514-4a7a-807c-14e6cc145a91" />
+					<batch:aggregator doc:name="Batch Aggregator for error" doc:id="bccc2045-232f-4bff-a289-020563ce408f" streaming="true">
+						<logger level="INFO" doc:name="Logger" doc:id="d865cb87-818f-45b8-877d-dffacfa73283" />
 					</batch:aggregator>
-					<logger level="INFO" doc:name="Logger" doc:id="5522ece2-ca0b-4b8b-8b6b-93bea4c73df1" />
 				</batch:step>
 			</batch:process-records>
 			<batch:on-complete >

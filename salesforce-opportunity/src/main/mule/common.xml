@@ -24,9 +24,18 @@ var accountId = payload."Account Number"
 			<error-mapping sourceType="SALESFORCE:INVALID_INPUT" targetType="OPPORTUNITY:ACCOUNT-NOT-FOUND" />
 			<salesforce:salesforce-query><![CDATA[#[vars.query]]]></salesforce:salesforce-query>
 		</salesforce:query>
-			<error-handler >
-				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="9ae8afb2-ad43-4f78-a089-0a44b60ab052" type="SALESFORCE:INVALID_INPUT" >
-					<ee:transform doc:name="error-message" doc:id="7b9d17f7-7fff-461f-96b9-36df57c695e0" >
+			<error-handler>
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="7f7eb69d-0d2d-4acb-90d7-6e82fdae1126" >
+					<ee:transform doc:name="error-records" doc:id="29e9ddea-fabd-4bbd-a7a2-b8cd1b540f7c" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+						<ee:variables />
+					</ee:transform>
+					<ee:transform doc:name="error-message" doc:id="1a1994ac-e6c5-481d-a8c8-4e81d0eebcb8" >
 						<ee:message >
 							<ee:set-payload ><![CDATA[%dw 2.0
 output application/csv header = true, separator = " "
@@ -43,8 +52,8 @@ output application/java
 "C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "Error-" ++ payload."Account Number" ++ ".csv"]]></ee:set-variable>
 						</ee:variables>
 					</ee:transform>
-					<flow-ref doc:name="common-write-sub-flow" doc:id="d1a54033-14eb-4d25-b480-ec19aeb11eca" name="common-write-sub-flow" />
-				</on-error-continue>
+					<flow-ref doc:name="common-write-sub-flow" doc:id="31c2c88b-e6e2-4f42-bda0-356332b8150a" name="common-write-sub-flow" />
+				</on-error-propagate>
 			</error-handler>
 		</try>
 		<ee:transform doc:name="sf-query-response" doc:id="2161acdc-d111-4b84-a798-071cdccaf7b8">

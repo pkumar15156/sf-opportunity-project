@@ -1,0 +1,12 @@
+%dw 2.0
+
+type auto_6f1f2114_7112_42a4_bb3b_c47c0b5b9d3d_Input_Variables_records = Array<{|  message: org_mule_runtime_api_message_Message,   variables: {|    val: Any,     accountNumber: Array<Any>
+  |}
+|}>
+type org_mule_runtime_api_message_Message = {|
+  payload: Any, 
+  attributes: Null
+|} {"typeId": "org.mule.runtime.api.message.Message"}
+
+
+

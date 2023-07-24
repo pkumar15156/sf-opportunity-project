@@ -20,11 +20,41 @@ var accountId = payload."Account Number"
 			</ee:variables>
 		</ee:transform>
 		<try doc:name="Try" doc:id="2ee7ac04-b504-461f-9749-6edf73398e5d" >
-			<raise-error doc:name="Raise error" doc:id="2bf3a25a-4e4d-40ed-9325-7765c3951675" type="AP:BP" description="This is a undefined error in mule 4."/>
 			<salesforce:query doc:name="query-sf-opportunity" doc:id="2acb69cd-3823-439e-9d3f-77c2793ff26c" config-ref="Salesforce_Config">
 			<error-mapping sourceType="SALESFORCE:INVALID_INPUT" targetType="OPPORTUNITY:ACCOUNT-NOT-FOUND" />
 			<salesforce:salesforce-query><![CDATA[#[vars.query]]]></salesforce:salesforce-query>
 		</salesforce:query>
+			<error-handler>
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="bb810c2a-d8ab-416f-b13d-ed3f891c53d3" >
+					<ee:transform doc:name="error-records" doc:id="f8203df7-09b6-4438-9876-e41128b92b97">
+								<ee:message>
+									<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+								</ee:message>
+								<ee:variables />
+							</ee:transform>
+					<ee:transform doc:name="error-message" doc:id="be8bd092-74cf-432d-86c7-38de0adf7f85">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/csv header = true, separator = " "
+---
+{
+    "Error": error.description,
+    "AccountID": payload."Line Item Number"
+}]]></ee:set-payload>
+					</ee:message>
+								<ee:variables>
+									<ee:set-variable variableName="path"><![CDATA[%dw 2.0
+output application/java
+---
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "SF-Error-" ++ now() as String {format: "yyyyMMdd"} ++ payload."Account Number" ++ ".csv"]]></ee:set-variable>
+								</ee:variables>
+				</ee:transform>
+					<flow-ref doc:name="common-write-sub-flow" doc:id="7c72d402-9ba7-4223-8981-fcfd2b46f326" name="common-write-sub-flow" />
+				</on-error-propagate>
+			</error-handler>
 		</try>
 		<choice doc:name="isPayloadEmpty?" doc:id="665878fa-14bc-454e-a077-0867622c6411" >
 			<when expression="#[!isEmpty(payload)]">
@@ -33,45 +63,11 @@ var accountId = payload."Account Number"
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-payload map ($ ++ vars.val) ++ {"uniqueKey": "Salesforce"}]]></ee:set-payload>
+payload map ($ ++ vars.val ++ {"uniqueKey": "Salesforce"})]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 			</when>
 			<otherwise >
-<!-- [STUDIO:"Try"]				<try doc:name="Try" doc:id="dc1f6ab6-3bc9-4cf0-8916-f5192cfec1bd" >
-					<error-handler >
-						<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="c1b27306-64c6-45c8-b99d-2e861f5b9692" >
-							<ee:transform doc:name="error-records" doc:id="f8203df7-09b6-4438-9876-e41128b92b97">
-								<ee:message>
-									<ee:set-payload><![CDATA[%dw 2.0
-output application/json
-&#45;&#45;-
-payload&#93;&#93;></ee:set-payload>
-								</ee:message>
-								<ee:variables />
-							</ee:transform>
-							<ee:transform doc:name="error-message" doc:id="be8bd092-74cf-432d-86c7-38de0adf7f85">
-					<ee:message>
-						<ee:set-payload><![CDATA[%dw 2.0
-output application/csv header = true, separator = " "
-&#45;&#45;-
-{
-	"ID": payload."Account Number",
-	"Error": error.description
-}&#93;&#93;></ee:set-payload>
-					</ee:message>
-								<ee:variables >
-									<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
-output application/java
-&#45;&#45;-
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "SF-Error-" ++ payload."Account Number" ++ ".csv"&#93;&#93;></ee:set-variable>
-								</ee:variables>
-				</ee:transform>
-							<flow-ref doc:name="common-write-sub-flow" doc:id="7c72d402-9ba7-4223-8981-fcfd2b46f326" name="common-write-sub-flow"/>
-							<logger level="INFO" doc:name="Logger" doc:id="f6fb05f0-9a66-4c52-b8d6-5ce08ac58746" />
-						</on-error-continue>
-					</error-handler>
-				</try> [STUDIO] -->
 				<raise-error doc:name="OPPORTUNITY: SF_ERROR" doc:id="778aca8e-4b92-4d28-9d41-311d2c07a71d" type="OPPORTUNITY: SF_ERROR" description="The error is related to salesforce." />
 			</otherwise>
 		</choice>

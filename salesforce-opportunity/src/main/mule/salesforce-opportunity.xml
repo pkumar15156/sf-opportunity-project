@@ -81,8 +81,8 @@ payload]]></ee:set-payload>
 output application/csv // header=true, separator= " \t "
 ---
 {
-    "Error": payload.message."processing-records".detailedMessage[0],
-    "AccountID": payload.value[0]
+    "Error": error.description,
+    "AccountID": payload."Line Item Number"
 }]]></ee:set-payload>
 							</ee:message>
 							<ee:variables >

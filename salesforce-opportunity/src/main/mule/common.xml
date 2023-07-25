@@ -24,6 +24,7 @@ var accountId = payload."Account Number"
 			<error-mapping sourceType="SALESFORCE:INVALID_INPUT" targetType="OPPORTUNITY:ACCOUNT-NOT-FOUND" />
 			<salesforce:salesforce-query><![CDATA[#[vars.query]]]></salesforce:salesforce-query>
 		</salesforce:query>
+			<logger level="DEBUG" doc:name="Log payload" doc:id="954efa2d-1d57-43c5-8c38-4d2653eeda6b" message="#[payload]"/>
 			<error-handler>
 				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="bb810c2a-d8ab-416f-b13d-ed3f891c53d3" >
 					<ee:transform doc:name="error-records" doc:id="f8203df7-09b6-4438-9876-e41128b92b97">
@@ -52,7 +53,7 @@ output application/java
 "C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "SF-Error-" ++ now() as String {format: "yyyyMMdd"} ++ payload."Account Number" ++ ".csv"]]></ee:set-variable>
 								</ee:variables>
 				</ee:transform>
-					<flow-ref doc:name="common-write-sub-flow" doc:id="7c72d402-9ba7-4223-8981-fcfd2b46f326" name="common-write-sub-flow" />
+					<flow-ref doc:name="common-write-error-sub-flow" doc:id="7c72d402-9ba7-4223-8981-fcfd2b46f326" name="common-write-error-sub-flow" />
 				</on-error-propagate>
 			</error-handler>
 		</try>
@@ -73,7 +74,7 @@ payload map ($ ++ vars.val ++ {"uniqueKey": "Salesforce"})]]></ee:set-payload>
 		</choice>
 		<logger level="INFO" doc:name="end-log" doc:id="ecf6a352-d4eb-4501-b568-b8d0f6a02dc2" />
 	</flow>
-	<sub-flow name="common-write-sub-flow" doc:id="8f9aaf21-110d-4e47-972c-34aa9f14e4d4" >
+	<sub-flow name="common-write-error-sub-flow" doc:id="8f9aaf21-110d-4e47-972c-34aa9f14e4d4" >
 		<logger level="INFO" doc:name="start-log" doc:id="8d977b2d-42dc-4be9-a144-09f7873defe7" />
 		<file:write doc:name="write-errors" doc:id="5a4c3bee-99fd-467b-9f6f-46837d2656a1" config-ref="File_Config" path="#[vars.path]"/>
 		<logger level="INFO" doc:name="end-log" doc:id="e578b5d0-a4eb-43fa-a9c5-5df31579c1b6" />
@@ -81,14 +82,27 @@ payload map ($ ++ vars.val ++ {"uniqueKey": "Salesforce"})]]></ee:set-payload>
 	<sub-flow name="datapipe-sub-flow" doc:id="3c42f05f-4da6-427b-af22-1b5b8895fe40" >
 		<logger level="INFO" doc:name="start-log" doc:id="680271dc-45fb-489d-ba74-9a5e28e2a56c" />
 		<file:read doc:name="read-lookup-file" doc:id="1c344791-d895-4837-aad1-f9ec7580b654" config-ref="File_Config" path="C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\lookup\DPTransactionInfo.csv"/>
-		<ee:transform doc:name="convert-payload" doc:id="fb0c752e-f7e6-4130-a641-f872322fff76" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
+		<choice doc:name="isPayloadEmpty?" doc:id="32789f33-4d50-4a61-b608-513ad2218051" >
+			<when expression="#[!isEmpty(payload)]">
+				<ee:transform doc:name="convert-payload" doc:id="fb0c752e-f7e6-4130-a641-f872322fff76">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
+var accountNumber = vars.val."Account Number"
 ---
-(flatten(vars.accountNumber map ((item, index) -> payload[?($.PartnerAccountId == item)]))[0] 	++ vars.val ++ {"uniqueKey": "Datapipe"})]]></ee:set-payload>
+(flatten(accountNumber map ((item, index) -> payload[?($.PartnerAccountId == item)]))[0] 	++ vars.val ++ {"uniqueKey": "Datapipe"})]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
+			</when>
+			<otherwise >
+				<raise-error doc:name="raise-custom-error : DP:FILE_ERROR" doc:id="5ca39ea5-992c-4065-9e4b-f18d8015efcd" type="DP:FILE_ERROR" description="There is no positive response from the lookup file."/>
+			</otherwise>
+		</choice>
 		<logger level="INFO" doc:name="end-log" doc:id="d53e62ca-5429-4574-a0e2-4b52ac318d17" />
+	</sub-flow>
+	<sub-flow name="common-write-txsta-and-txta-file-sub-flow" doc:id="51a3bbf7-f071-456b-abe7-432fa0205119" >
+		<logger level="INFO" doc:name="start-log" doc:id="37b8fd94-049e-43f1-b82c-b5e7ef8fe515" />
+		<file:write doc:name="Write-TXSTA-and-TXTA-files" doc:id="e921549d-627c-45a8-b954-61cf1e35e06d" config-ref="File_Config" path="#[vars.path]" />
+		<logger level="INFO" doc:name="end-log" doc:id="52422ebb-f569-465f-8d32-07576c012ee0" />
 	</sub-flow>
 </mule>

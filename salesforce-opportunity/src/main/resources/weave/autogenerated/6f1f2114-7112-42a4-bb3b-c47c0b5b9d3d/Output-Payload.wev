@@ -1,4 +1,19 @@
 %dw 2.0
 
-type auto_6f1f2114_7112_42a4_bb3b_c47c0b5b9d3d_Output_Payload = Null
+type auto_6f1f2114_7112_42a4_bb3b_c47c0b5b9d3d_Output_Payload = {|
+  "0": org_mule_runtime_api_message_Message, 
+  "1": org_mule_runtime_api_message_Message_3
+|}
+type org_mule_runtime_api_message_Message_3 = {|
+  payload: Array<Any>, 
+  attributes: Null
+|} {"typeId": "org.mule.runtime.api.message.Message"}
+
+
+type org_mule_runtime_api_message_Message = {|
+  payload: Array<Any>, 
+  attributes: Null
+|} {"typeId": "org.mule.runtime.api.message.Message"}
+
+
 

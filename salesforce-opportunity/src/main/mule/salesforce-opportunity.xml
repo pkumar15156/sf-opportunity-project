@@ -7,12 +7,18 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
-	<flow name="salesforce-opportunityFlow" doc:id="dc491c37-ed78-4cf1-b472-435de51e8254" >
-		<file:listener doc:name="read-records" doc:id="9199396d-84a9-4993-a94a-78ba4ad6ec0b" directory="${file.readPath}" config-ref="File_Config" outputMimeType="application/csv; separator=|; header=true" autoDelete="true">
+	<sub-flow name="write-txsta-and-txta-file-sub-flow" doc:id="08e1b19c-f485-4538-8837-589d14dd3de6" >
+		<logger level="INFO" doc:name="start-log" doc:id="a3dfd68b-1a3f-4ca7-922a-7e4e8518c72a" />
+		<file:write doc:name="Write-TXSTA" doc:id="52e8dd52-5601-4d26-b6f4-ffb46284e7aa" config-ref="File_Config" path="#[vars.path]" />
+		<logger level="INFO" doc:name="end-log" doc:id="b982bd9f-060f-4a49-a322-dd9d227246c7" />
+	</sub-flow>
+	<flow name="salesforce-opportunity-main-flow" doc:id="dc491c37-ed78-4cf1-b472-435de51e8254" >
+		<file:listener doc:name="read-records" doc:id="9199396d-84a9-4993-a94a-78ba4ad6ec0b" directory="${file.readPath}" config-ref="File_Config" outputMimeType="application/csv; separator=|; header=true">
 			<scheduling-strategy >
 				<fixed-frequency/>
 			</scheduling-strategy>
 		</file:listener>
+		<file:move doc:name="Archiving-Files" doc:id="82c88344-d6ec-4daa-b993-763225110401" config-ref="File_Config" renameTo='#[attributes.fileName ++ now() as String {format: "-dd-MMMM-Y-ss"} ++ ".Archive"]' targetPath="${file.movedPath}" sourcePath="C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Read\test.csv"/>
 		<ee:transform doc:name="convert-payload" doc:id="8ea6a3cb-278d-4f77-82b2-4a4e31f81739" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
@@ -50,12 +56,12 @@ output application/json
 flatten(payload)]]></ee:set-variable>
 							</ee:variables>
 						</ee:transform>
-						<flow-ref doc:name="salesforce-opportunity-sub-flow" doc:id="d58dc5d1-aa7f-4f68-bbd9-45b93d7f327a" name="salesforce-opportunity-sub-flow"/>
+						<flow-ref doc:name="write-operation-txsta-txta-file-sub-flow" doc:id="d58dc5d1-aa7f-4f68-bbd9-45b93d7f327a" name="write-operation-txsta-txta-file-sub-flow"/>
 						<logger level="INFO" doc:name="end-log" doc:id="a09162f3-faf0-4f1c-9f23-0c47caa3e158" />
 					</batch:aggregator>
 				</batch:step>
 				<batch:step name="catching-errors" doc:id="24600861-5e62-4d1d-862a-2e7390307bc3" acceptPolicy="ONLY_FAILURES">
-					<ee:transform doc:name="Transform Message" doc:id="739c1cc3-539b-4f02-b80e-28c3d2df797d" >
+					<ee:transform doc:name="error-payload" doc:id="739c1cc3-539b-4f02-b80e-28c3d2df797d" >
 						<ee:message >
 							<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
@@ -114,16 +120,17 @@ output application/java
 		</choice>
 		<logger level="INFO" doc:name="end-log" doc:id="b3c0274f-7456-4c33-b0b7-fc9dd231442b" />
 	</sub-flow>
-	<sub-flow name="salesforce-opportunity-sub-flow" doc:id="6f1f2114-7112-42a4-bb3b-c47c0b5b9d3d" >
+	<sub-flow name="write-operation-txsta-txta-file-sub-flow" doc:id="6f1f2114-7112-42a4-bb3b-c47c0b5b9d3d" >
 		<logger level="INFO" doc:name="start-log" doc:id="f50cd152-2a62-401f-b9b4-429785f6e0b8" />
-		<choice doc:name="Choice" doc:id="5fc54ae7-ca8e-4516-9752-a490378351e2" >
-			<when expression='#[payload.uniqueKey == "Salesforce"]'>
-				<ee:transform doc:name="TXSTA-file-payload" doc:id="d6b65c10-2faf-45ab-a7a5-a7f5e2bd7873" >
-					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
+		<scatter-gather doc:name="Scatter-Gather" doc:id="eeb6ac61-ac23-4e9f-a709-d094581e664a" >
+			<route >
+				<ee:transform doc:name="Datapipe-payload" doc:id="d6b65c10-2faf-45ab-a7a5-a7f5e2bd7873">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
 output application/csv header = true, separator = " "
+var txstaResponse = vars.finalResponse filter (item) -> item.uniqueKey == "Datapipe"
 ---
-vars.finalResponse map{
+txstaResponse map{
 	"ORDERID": $."Line Item Number",
 	"LINENUMBER": 1,
 	"SUBLINENUMBER": 1,
@@ -226,21 +233,22 @@ vars.finalResponse map{
 	"GENERICBOOLEAN6": ""
 	}]]></ee:set-payload>
 					</ee:message>
-					<ee:variables >
-						<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
+					<ee:variables>
+						<ee:set-variable variableName="path"><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "TXSTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} 
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "DP-TXSTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} 
 ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
 					</ee:variables>
 				</ee:transform>
-				<file:write doc:name="Write-TXSTA" doc:id="52e8dd52-5601-4d26-b6f4-ffb46284e7aa" config-ref="File_Config" path="#[vars.path]" />
-				<ee:transform doc:name="TXTA-file-payload" doc:id="308a301f-faa8-4a3a-867f-acdc4f164712" >
-					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
+				<flow-ref doc:name="write-txsta-and-txta-file-sub-flow" doc:id="dd827d40-c0aa-41a9-812c-f62446696b61" name="write-txsta-and-txta-file-sub-flow" />
+				<ee:transform doc:name="TXTA-file-payload" doc:id="308a301f-faa8-4a3a-867f-acdc4f164712">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
 output application/csv header = true, separator = " "
+var txtaResponse = vars.finalResponse filter (item) -> item.uniqueKey == "Datapipe"
 ---
-vars.finalResponse map{
+txtaResponse map{
 	"ORDERID": $."Line Item Number",
 	"LINENUMBER": 1,
 	"SUBLINENUMBER": 1,
@@ -291,157 +299,156 @@ vars.finalResponse map{
     "GENERICBOOLEAN6": ""
 }]]></ee:set-payload>
 					</ee:message>
-					<ee:variables >
-						<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
+					<ee:variables>
+						<ee:set-variable variableName="path"><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "TXTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "DP-TXTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
 					</ee:variables>
 				</ee:transform>
-				<file:write doc:name="Write-TXTA" doc:id="d30f4660-8c51-4d52-8985-7e86fc6dce5f" path="#[vars.path]" />
-			</when>
-			<otherwise >
-				<logger level="INFO" doc:name="Logger" doc:id="c05a4e86-8f02-4d2d-ba2a-26f483ae345e" />
-			</otherwise>
-		</choice>
-		<choice doc:name="Choice" doc:id="dac96679-028b-432c-b26d-4411be29affd" >
-			<when expression='#[payload.uniqueKey == "Datapipe"]'>
-				<ee:transform doc:name="TXSTA-file-payload" doc:id="4b24875e-da20-442a-ae26-b9dba42ca969" >
+				<flow-ref doc:name="write-txsta-and-txta-file-sub-flow" doc:id="5259bad2-673b-48a8-a5ee-b18176eae8df" name="write-txsta-and-txta-file-sub-flow"/>
+			</route>
+			<route >
+				<ee:transform doc:name="Salesforce-query-payload" doc:id="e9696720-f1a1-4e8b-9c20-6f74f1cdb562" >
 					<ee:message >
 						<ee:set-payload ><![CDATA[%dw 2.0
-output application/csv header = true, separator = " "
+output application/json
+var txstaResponse = vars.finalResponse filter (item) -> item.uniqueKey == "Salesforce"
 ---
-vars.finalResponse map{
-	"ORDERID": $."Line Item Number",
-	"LINENUMBER": 1,
-	"SUBLINENUMBER": 1,
-	"EVENTTYPEID": $."Transaction Type",
-	"ACCOUNTINGDATE": "",
-	"PRODUCTID": "",
-	"PRODUCTNAME": "",
-	"PRODUCTDESCRIPTION": "",
-	"UNITTYPEFORVALUE 2"  : "GC",
-	"NUMBEROFUNITS": "",
-	"UNITVALUE": "",
-	"UNITTYPEFORUNITVALUE 2": "",
-	"COMPENSATIONDATE": $."Invoice Date",
-	"ALTERNATEORDERNUMBER": $."Invoice Number",
-	"DATASOURCE": "",
-	"NATIVECURRENCY": $."Currency Code",
-	"NATIVECURRENCYAMOUNT": $.Amount,
-	"DISCOUNTPERCENT": "",
-	"DISCOUNTTYPE": "",
-	"BILLTOCUSTID": "",
-	"BILLTOCONTACT": "",
-	"BILLTOCOMPANY": "",
-	"BILLTOAREACODE": "",
-	"BILLTOPHONE": "",
-	"BILLTOFAX": "",
-	"BILLTOADDRESS1": "",
-	"BILLTOADDRESS2": "",
-	"BILLTOADDRESS3": "",
-	"BILLTOCITY": "",
-	"BILLTOSTATE": "",
-	"BILLTOCOUNTRY": "",
-	"BILLTOPOSTALCODE": "",
-	"BILLTOINDUSTRY": "",
-	"BILLTOGEOGRAPHY": "",
-	"SHIPTOCUSTID": "",
-	"SHIPTOCONTACT": "",
-	"SHIPTOCOMPANY": "",
-	"SHIPTOAREACODE": "",
-	"SHIPTOPHONE": "",
-	"SHIPTOFAX": "",
-	"SHIPTOADDRESS1": "",
-	"SHIPTOADDRESS2": "",
-	"SHIPTOADDRESS3": "",
-	"SHIPTOCITY": "",
-	"SHIPTOSTATE": "",
-	"SHIPTOCOUNTRY": "",
-	"SHIPTOPOSTALCODE": "",
-	"SHIPTOINDUSTRY": "",
-	"SHIPTOGEOGRAPHY": "",
-	"OTHERTOCUSTID": "",
-	"OTHERTOCONTACT": "",
-	"OTHERTOCOMPANY": "",
-	"OTHERTOAREACODE": "",
-	"OTHERTOPHONE": "",
-	"OTHERTOFAX": "",
-	"OTHERTOADDRESS1": "",
-	"OTHERTOADDRESS2": "",
-	"OTHERTOADDRESS3": "",
-	"OTHERTOCITY": "",
-	"OTHERTOSTATE": "",
-	"OTHERTOCOUNTRY": "",
-	"OTHERTOPOSTALCODE": "",
-	"OTHERTOINDUSTRY": "",
-	"OTHERTOGEOGRAPHY": "",
-	"REASONID": "",
-	"COMMENTS": "",
-	"GENERICATTRIBUTE3": $."Device Number",
-	"GENERICATTRIBUTE4": $.FinalOpportunityType,
-	"GENERICATTRIBUTE5": $.PartnerType,
-	"GENERICATTRIBUTE6": $.PartnerAccountName,
-	"GENERICATTRIBUTE7": $.OpportunityCategory,
-	"GENERICATTRIBUTE8": "",
-	"GENERICATTRIBUTE9": $.PartnerAccountOwner,
-	"GENERICATTRIBUTE10": $.PartnerAccountOwnerRole,
-	"GENERICATTRIBUTE11": $.PartnerContractType,
-	"GENERICATTRIBUTE12": $.CommissionRole,
-	"GENERICATTRIBUTE13": $.OracleVendorId,
-	"GENERICATTRIBUTE14": "",
-	"GENERICATTRIBUTE21": $."Invoice Source",
-	"GENERICATTRIBUTE22": $."Product Group",
-	"GENERICATTRIBUTE23": $."Product Type",
-	"GENERICATTRIBUTE24": $."Product Type Charge Type",
-	"GENERICATTRIBUTE25": $.PartnerAccountId,
-	"GENERICATTRIBUTE27": $.PartnerAccountType,
-	"GENERICATTRIBUTE28": $.PartnerAccountSubType,
-	"GENERICATTRIBUTE31": $."Account Key",
-	"UNITTYPEFORGENERICNUMBER4": "",
-	"GENERICNUMBER5": "",
-	"UNITTYPEFORGENERICNUMBER5": "",
-	"GENERICNUMBER6": "",
-	"UNITTYPEFORGENERICNUMBER6": "",
-	"GENERICDATE1": $.CloseDate,
-	"GENERICDATE4": $."Contract End Date",
-	"GENERICDATE6": "",
-	"GENERICBOOLEAN1": "",
-	"GENERICBOOLEAN2": "",
-	"GENERICBOOLEAN3": "",
-	"GENERICBOOLEAN4": "",
-	"GENERICBOOLEAN5": "",
-	"GENERICBOOLEAN6": ""
-	}]]></ee:set-payload>
+txstaResponse map
+{
+    "ORDERID": $."Line Item Number",
+    "LINENUMBER": 1,
+    "SUBLINENUMBER": 1,
+    "EVENTTYPEID": $."Transaction Type",
+    "ACCOUNTINGDATE": "",
+    "PRODUCTID": "",
+    "PRODUCTNAME": "",
+    "PRODUCTDESCRIPTION": "",
+    "UNITTYPEFORVALUE 2"  : "GC",
+    "NUMBEROFUNITS": "",
+    "UNITVALUE": "",
+    "UNITTYPEFORUNITVALUE 2": "",
+    "COMPENSATIONDATE": $."Invoice Date",
+    "ALTERNATEORDERNUMBER": $."Invoice Number",
+    "DATASOURCE": "",
+    "SHIPTOCUSTID": "",
+    "SHIPTOCONTACT": "",
+    "SHIPTOCOMPANY": "",
+    "SHIPTOAREACODE": "",
+    "SHIPTOPHONE": "",
+    "SHIPTOFAX": "",
+    "SHIPTOADDRESS1": "",
+    "SHIPTOADDRESS2": "",
+    "SHIPTOADDRESS3": "",
+    "SHIPTOCITY": "",
+    "SHIPTOSTATE": "",
+     "NATIVECURRENCY": $."Currency Code",
+    "NATIVECURRENCYAMOUNT": $."Amount",
+    "DISCOUNTPERCENT": "",
+    "DISCOUNTTYPE": "",
+    "BILLTOCUSTID": "",
+    "BILLTOCONTACT": "",
+    "BILLTOCOMPANY": "",
+    "BILLTOAREACODE": "",
+    "BILLTOPHONE": "",
+    "BILLTOFAX": "",
+    "BILLTOADDRESS1": "",
+    "BILLTOADDRESS2": "",
+    "BILLTOADDRESS3": "",
+    "BILLTOCITY": "",
+    "BILLTOSTATE": "",
+    "BILLTOCOUNTRY": "",
+    "BILLTOPOSTALCODE": "",
+    "BILLTOINDUSTRY": "",
+    "BILLTOGEOGRAPHY": "",
+    "SHIPTOCOUNTRY": "",
+    "SHIPTOPOSTALCODE": "",
+    "SHIPTOINDUSTRY": "",
+    "SHIPTOGEOGRAPHY": "",
+    "OTHERTOCUSTID": "",
+    "OTHERTOCONTACT": "",
+    "OTHERTOCOMPANY": "",
+    "OTHERTOAREACODE": "",
+    "OTHERTOPHONE": "",
+    "OTHERTOFAX": "",
+    "OTHERTOADDRESS1": "",
+    "OTHERTOADDRESS2": "",
+    "OTHERTOADDRESS3": "",
+    "OTHERTOCITY": "",
+    "OTHERTOSTATE": "",
+    "OTHERTOCOUNTRY": "",
+    "OTHERTOPOSTALCODE": "",
+    "OTHERTOINDUSTRY": "",
+    "OTHERTOGEOGRAPHY": "",
+    "REASONID": "",
+    "COMMENTS": "",
+    "COMPENSATIONDATE": $."Device Number",
+    "GENERICATTRIBUTE4": $."type",
+    "GENERICATTRIBUTE5": $.PartnerType,
+    "GENERICATTRIBUTE6": $.PartnerAccountName,
+    "GENERICATTRIBUTE7": $."ForecastCategory",
+    "GENERICATTRIBUTE8": "",
+    "GENERICATTRIBUTE9": $.PartnerAccountOwner,
+    "GENERICATTRIBUTE10": $.PartnerAccountOwnerRole,
+    "GENERICATTRIBUTE11": $.PartnerContractType,
+    "GENERICATTRIBUTE12": $.CommissionRole,
+    "GENERICATTRIBUTE13": $.OracleVendorId,
+    "GENERICATTRIBUTE14": "",
+    "GENERICDATE6": "",
+    "GENERICBOOLEAN1": "",
+    "GENERICBOOLEAN2": "",
+    "GENERICBOOLEAN3": "",
+    "GENERICBOOLEAN4": "",
+    "GENERICBOOLEAN5": "",
+    "GENERICBOOLEAN6": "",
+    "GENERICATTRIBUTE21": $."InvoiceSource__c",
+    "GENERICATTRIBUTE22": $."Product Group",
+    "GENERICATTRIBUTE23": $."Product Type",
+    "GENERICATTRIBUTE24": $."Product Type Charge Type",
+    "GENERICATTRIBUTE25": $.AccountId,
+    "GENERICATTRIBUTE27": $."type",
+    "GENERICATTRIBUTE28": $.PartnerAccountSubType,
+    "GENERICATTRIBUTE31": $."Account Key",
+    "GENERICATTRIBUTE32": $.attribute,
+    "UNITTYPEFORGENERICNUMBER4": "",
+    "GENERICNUMBER5": "",
+    "UNITTYPEFORGENERICNUMBER5": "",
+    "GENERICNUMBER6": "",
+    "UNITTYPEFORGENERICNUMBER6": "",
+    "GENERICDATE1": $.CloseDate,
+    "GENERICDATE4": $."Contract End Date",
+    }]]></ee:set-payload>
 					</ee:message>
 					<ee:variables >
 						<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "TXSTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} 
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "SF-TXSTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} 
 ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
 					</ee:variables>
 				</ee:transform>
-				<file:write doc:name="Write-TXSTA" doc:id="94f32e5f-e122-4693-826b-6509211d2a81" config-ref="File_Config" path="#[vars.path]" />
-				<ee:transform doc:name="TXTA-file-payload" doc:id="ea8ea2a5-11d5-4c4f-a4ef-36b6ed5e8325" >
+				<flow-ref doc:name="write-txsta-and-txta-file-sub-flow" doc:id="6e9a00df-3fe8-4242-a1b1-7def4bda4d4d" name="write-txsta-and-txta-file-sub-flow"/>
+				<ee:transform doc:name="TXTA-file-payload" doc:id="f43ca211-8054-49b0-b70b-d627a9b14c23" >
 					<ee:message >
 						<ee:set-payload ><![CDATA[%dw 2.0
-output application/csv header = true, separator = " "
+output application/json // header = true, separator = " "
+var txtaResponse = vars.finalResponse filter (item) -> item.uniqueKey == "Salesforce"
 ---
-vars.finalResponse map{
+txtaResponse map{
 	"ORDERID": $."Line Item Number",
 	"LINENUMBER": 1,
 	"SUBLINENUMBER": 1,
 	"EVENTTYPEID": $."Transaction Type",
     "PAYEEID": $.ParticipantID[0],
     "PAYEETYPE": "Participant",
-    "POSITIONNAME": "",
-    "TITLENAME": "",
-    "GENERICATTRIBUTE1": "",
-    "GENERICATTRIBUTE2": "",
+    "POSITIONNAME": $.StageName,
+    "TITLENAME": $.Name,
+    "GENERICATTRIBUTE1": $.ForecastCategory,
+    "GENERICATTRIBUTE2": $.CreatedById,
     "GENERICATTRIBUTE3": "",
     "GENERICATTRIBUTE4": "",
-    "GENERICATTRIBUTE5": "",
+    "GENERICATTRIBUTE5": $."OwnerId",
     "GENERICATTRIBUTE6": "",
     "GENERICATTRIBUTE7": "",
     "GENERICATTRIBUTE8": "",
@@ -483,15 +490,12 @@ vars.finalResponse map{
 						<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "TXTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "SF-TXTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
 					</ee:variables>
 				</ee:transform>
-				<file:write doc:name="Write-TXTA" doc:id="027838f8-cec9-4844-bb51-ade845c40a67" path="#[vars.path]" />
-			</when>
-			<otherwise >
-				<logger level="INFO" doc:name="Logger" doc:id="d28619b9-54fd-4067-a115-2e8fdacdba2d" />
-			</otherwise>
-		</choice>
+				<flow-ref doc:name="write-txsta-and-txta-file-sub-flow" doc:id="9d8cfa2b-eed5-421c-a47a-1446aee1b696" name="write-txsta-and-txta-file-sub-flow"/>
+			</route>
+		</scatter-gather>
 		<logger level="INFO" doc:name="end-log" doc:id="6e254776-09bd-4e19-bb75-7a8a82f9ca29" />
 	</sub-flow>
 </mule>

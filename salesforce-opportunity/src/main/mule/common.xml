@@ -7,56 +7,56 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
 	<flow name="us-cloud-sub-flow" doc:id="fea0096c-769d-4820-a8d9-2b49d7195a13" >
-		<logger level="INFO" doc:name="start-log" doc:id="98b3070a-260c-4efc-8bfd-eecce2804066" />
+		<logger level="INFO" doc:name="start-log" doc:id="98b3070a-260c-4efc-8bfd-eecce2804066" message='correlationID:#[vars.correlationID], message : "started-us-cloud-sub-flow"'/>
 		<ee:transform doc:name="var[query]" doc:id="7722f4de-4020-4d6b-963b-f75884cc0497" >
 			<ee:message >
 			</ee:message>
 			<ee:variables >
 				<ee:set-variable variableName="query" ><![CDATA[%dw 2.0
 output text/plain
-var accountId = payload."Account Number"
+var accountId = vars.val."Account Number"[0]
 ---
 "SELECT FIELDS(ALL) FROM Opportunity where AccountId = '" ++ accountId ++ "' limit 200"]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
-		<try doc:name="Try" doc:id="2ee7ac04-b504-461f-9749-6edf73398e5d" >
-			<salesforce:query doc:name="query-sf-opportunity" doc:id="2acb69cd-3823-439e-9d3f-77c2793ff26c" config-ref="Salesforce_Config">
+		<salesforce:query doc:name="query-sf-opportunity" doc:id="2acb69cd-3823-439e-9d3f-77c2793ff26c" config-ref="Salesforce_Config">
 			<error-mapping sourceType="SALESFORCE:INVALID_INPUT" targetType="OPPORTUNITY:ACCOUNT-NOT-FOUND" />
 			<salesforce:salesforce-query><![CDATA[#[vars.query]]]></salesforce:salesforce-query>
 		</salesforce:query>
-			<logger level="DEBUG" doc:name="Log payload" doc:id="954efa2d-1d57-43c5-8c38-4d2653eeda6b" message="#[payload]"/>
+		<logger level="DEBUG" doc:name="log-query-response" doc:id="954efa2d-1d57-43c5-8c38-4d2653eeda6b" message="correlationID:#[vars.correlationID], message :---&gt;response from salesforce query:--&gt;#[payload]" />
+<!-- [STUDIO:"Try"]		<try doc:name="Try" doc:id="2ee7ac04-b504-461f-9749-6edf73398e5d" >
 			<error-handler>
 				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="bb810c2a-d8ab-416f-b13d-ed3f891c53d3" >
 					<ee:transform doc:name="error-records" doc:id="f8203df7-09b6-4438-9876-e41128b92b97">
 								<ee:message>
 									<ee:set-payload><![CDATA[%dw 2.0
 output application/json
----
-payload]]></ee:set-payload>
+&#45;&#45;-
+payload&#93;&#93;></ee:set-payload>
 								</ee:message>
 								<ee:variables />
 							</ee:transform>
 					<ee:transform doc:name="error-message" doc:id="be8bd092-74cf-432d-86c7-38de0adf7f85">
 					<ee:message>
 						<ee:set-payload><![CDATA[%dw 2.0
-output application/csv header = true, separator = " "
----
+output application/csv // header = true, separator = " "
+&#45;&#45;-
 {
     "Error": error.description,
-    "AccountID": payload."Line Item Number"
-}]]></ee:set-payload>
+    "AccountID": vars.val."Line Item Number"[0&#93;
+}&#93;&#93;></ee:set-payload>
 					</ee:message>
 								<ee:variables>
 									<ee:set-variable variableName="path"><![CDATA[%dw 2.0
 output application/java
----
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "SF-Error-" ++ now() as String {format: "yyyyMMdd"} ++ payload."Account Number" ++ ".csv"]]></ee:set-variable>
+&#45;&#45;-
+"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "SF-Error-" ++ now() as String {format: "yyyyMMdd"} ++ vars.val."Account Number"[0&#93; ++ ".csv"&#93;&#93;></ee:set-variable>
 								</ee:variables>
 				</ee:transform>
 					<flow-ref doc:name="common-write-error-sub-flow" doc:id="7c72d402-9ba7-4223-8981-fcfd2b46f326" name="common-write-error-sub-flow" />
 				</on-error-propagate>
 			</error-handler>
-		</try>
+		</try> [STUDIO] -->
 		<choice doc:name="isPayloadEmpty?" doc:id="665878fa-14bc-454e-a077-0867622c6411" >
 			<when expression="#[!isEmpty(payload)]">
 				<ee:transform doc:name="sf-query-response" doc:id="2161acdc-d111-4b84-a798-071cdccaf7b8">
@@ -64,7 +64,7 @@ output application/java
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-payload map ($ ++ vars.val ++ {"uniqueKey": "Salesforce"})]]></ee:set-payload>
+payload map ($ ++ vars.val[0] ++ {"uniqueKey": "Salesforce"})]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 			</when>
@@ -72,16 +72,24 @@ payload map ($ ++ vars.val ++ {"uniqueKey": "Salesforce"})]]></ee:set-payload>
 				<raise-error doc:name="OPPORTUNITY: SF_ERROR" doc:id="778aca8e-4b92-4d28-9d41-311d2c07a71d" type="OPPORTUNITY: SF_ERROR" description="The error is related to salesforce." />
 			</otherwise>
 		</choice>
-		<logger level="INFO" doc:name="end-log" doc:id="ecf6a352-d4eb-4501-b568-b8d0f6a02dc2" />
+		<logger level="INFO" doc:name="end-log" doc:id="ecf6a352-d4eb-4501-b568-b8d0f6a02dc2" message='correlationID:#[vars.correlationID], message : "completed-us-cloud-sub-flow"'/>
 	</flow>
 	<sub-flow name="common-write-error-sub-flow" doc:id="8f9aaf21-110d-4e47-972c-34aa9f14e4d4" >
-		<logger level="INFO" doc:name="start-log" doc:id="8d977b2d-42dc-4be9-a144-09f7873defe7" />
+		<logger level="INFO" doc:name="start-log" doc:id="8d977b2d-42dc-4be9-a144-09f7873defe7" message='correlationID:#[vars.correlationID], message : "started-common-write-error-sub-flow"'/>
 		<file:write doc:name="write-errors" doc:id="5a4c3bee-99fd-467b-9f6f-46837d2656a1" config-ref="File_Config" path="#[vars.path]"/>
-		<logger level="INFO" doc:name="end-log" doc:id="e578b5d0-a4eb-43fa-a9c5-5df31579c1b6" />
+		<logger level="INFO" doc:name="end-log" doc:id="e578b5d0-a4eb-43fa-a9c5-5df31579c1b6" message='correlationID:#[vars.correlationID], message : "completed-common-write-error-sub-flow"'/>
 	</sub-flow>
 	<sub-flow name="datapipe-sub-flow" doc:id="3c42f05f-4da6-427b-af22-1b5b8895fe40" >
-		<logger level="INFO" doc:name="start-log" doc:id="680271dc-45fb-489d-ba74-9a5e28e2a56c" />
-		<file:read doc:name="read-lookup-file" doc:id="1c344791-d895-4837-aad1-f9ec7580b654" config-ref="File_Config" path="C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\lookup\DPTransactionInfo.csv"/>
+		<logger level="INFO" doc:name="start-log" doc:id="680271dc-45fb-489d-ba74-9a5e28e2a56c" message='correlationID:#[vars.correlationID], message : "started-common-write-error-sub-flow"'/>
+		<ee:transform doc:name="readURL" doc:id="5b3a77a5-9d61-4fcd-8ac5-9248b86ff325" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+readUrl("classpath://Files/DPTransactionInfo.csv" , "application/csv")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="DEBUG" doc:name="log-lookup-file-response" doc:id="9e00374b-857a-4546-9c05-d3d8fb896434" message="correlationID:#[vars.correlationID], message :---&gt;response from lookup file:--&gt;#[payload]"/>
 		<choice doc:name="isPayloadEmpty?" doc:id="32789f33-4d50-4a61-b608-513ad2218051" >
 			<when expression="#[!isEmpty(payload)]">
 				<ee:transform doc:name="convert-payload" doc:id="fb0c752e-f7e6-4130-a641-f872322fff76">
@@ -90,7 +98,7 @@ payload map ($ ++ vars.val ++ {"uniqueKey": "Salesforce"})]]></ee:set-payload>
 output application/json
 var accountNumber = vars.val."Account Number"
 ---
-(flatten(accountNumber map ((item, index) -> payload[?($.PartnerAccountId == item)]))[0] 	++ vars.val ++ {"uniqueKey": "Datapipe"})]]></ee:set-payload>
+(flatten(accountNumber map ((item, index) -> payload[?($.PartnerAccountId == item)]))[0] 	++ vars.val[0] ++ {"uniqueKey": "Datapipe"})]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 			</when>
@@ -98,11 +106,11 @@ var accountNumber = vars.val."Account Number"
 				<raise-error doc:name="raise-custom-error : DP:FILE_ERROR" doc:id="5ca39ea5-992c-4065-9e4b-f18d8015efcd" type="DP:FILE_ERROR" description="There is no positive response from the lookup file."/>
 			</otherwise>
 		</choice>
-		<logger level="INFO" doc:name="end-log" doc:id="d53e62ca-5429-4574-a0e2-4b52ac318d17" />
+		<logger level="INFO" doc:name="end-log" doc:id="d53e62ca-5429-4574-a0e2-4b52ac318d17" message='correlationID:#[vars.correlationID], message : "started-common-write-error-sub-flow"'/>
 	</sub-flow>
 	<sub-flow name="common-write-txsta-and-txta-file-sub-flow" doc:id="51a3bbf7-f071-456b-abe7-432fa0205119" >
-		<logger level="INFO" doc:name="start-log" doc:id="37b8fd94-049e-43f1-b82c-b5e7ef8fe515" />
+		<logger level="INFO" doc:name="start-log" doc:id="37b8fd94-049e-43f1-b82c-b5e7ef8fe515" message='correlationID:#[vars.correlationID], message : "started-common-write-txsta-and-txta-file-sub-flow"'/>
 		<file:write doc:name="Write-TXSTA-and-TXTA-files" doc:id="e921549d-627c-45a8-b954-61cf1e35e06d" config-ref="File_Config" path="#[vars.path]" />
-		<logger level="INFO" doc:name="end-log" doc:id="52422ebb-f569-465f-8d32-07576c012ee0" />
+		<logger level="INFO" doc:name="end-log" doc:id="52422ebb-f569-465f-8d32-07576c012ee0" message='correlationID:#[vars.correlationID], message : "completed-common-write-txsta-and-txta-file-sub-flow"'/>
 	</sub-flow>
 </mule>

@@ -13,8 +13,8 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 				<fixed-frequency/>
 			</scheduling-strategy>
 		</file:listener>
-<!-- [STUDIO:"Archiving-Files"]		<file:move doc:name="Archiving-Files" doc:id="82c88344-d6ec-4daa-b993-763225110401" config-ref="File_Config" renameTo='#[attributes.fileName ++ now() as String {format: "-dd-MMMM-Y-ss"} ++ ".Archive"&#93;' targetPath="${file.movedPath}" sourcePath="C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Read\test.csv"/> [STUDIO] -->
-		<batch:job jobName="salesforce-opportunity-batch-job" doc:id="bd9d4265-c0f7-401e-9dea-7f683f17fb25" maxFailedRecords="-1" blockSize="1000">
+		<set-variable value="#[uuid()]" doc:name="correlationID default uuid()" doc:id="92212bed-ae7f-4938-bebe-121dbc55bffa" variableName="correlationID"/>
+		<batch:job jobName="salesforce-opportunity-batch-job" doc:id="bd9d4265-c0f7-401e-9dea-7f683f17fb25" maxFailedRecords="-1" blockSize="1100">
 			<batch:process-records >
 				<batch:step name="processing-records" doc:id="c09bf2c5-9ca7-4188-bc1f-b1adfdd90ac3" >
 					<ee:transform doc:name="storing-initial-payload-in-var [val]" doc:id="7254f82f-89d9-4390-8f60-b6533060b988" >
@@ -29,7 +29,7 @@ payload]]></ee:set-variable>
 					</ee:transform>
 					<flow-ref doc:name="datapipe-vs-others-sub_Flow" doc:id="f0f81304-319a-4088-800f-407136330377" name="datapipe-vs-others-sub_Flow" />
 					<batch:aggregator doc:name="Batch Aggregator" doc:id="95aaa711-e798-4c28-8a5d-b1766575088b" preserveMimeTypes="true" size="1000">
-						<logger level="INFO" doc:name="start-log" doc:id="a14630b6-8ea8-46cb-8bb4-5b77216651ee" />
+						<logger level="INFO" doc:name="start-log" doc:id="a14630b6-8ea8-46cb-8bb4-5b77216651ee" message='correlationID:#[vars.correlationID], message : "started-batch-aggregator-inside first-batch-step"'/>
 						<ee:transform doc:name="var[final-response]" doc:id="fcb05907-64a0-4403-a58c-d3f058ed1fc2" >
 							<ee:message >
 							</ee:message>
@@ -41,7 +41,7 @@ flatten(payload)]]></ee:set-variable>
 							</ee:variables>
 						</ee:transform>
 						<flow-ref doc:name="write-operation-txsta-txta-file-sub-flow" doc:id="d58dc5d1-aa7f-4f68-bbd9-45b93d7f327a" name="write-operation-txsta-txta-file-sub-flow"/>
-						<logger level="INFO" doc:name="end-log" doc:id="a09162f3-faf0-4f1c-9f23-0c47caa3e158" />
+						<logger level="INFO" doc:name="end-log" doc:id="a09162f3-faf0-4f1c-9f23-0c47caa3e158" message='correlationID:#[vars.correlationID], message : "completed-batch-aggregator-inside first-batch-step"'/>
 					</batch:aggregator>
 				</batch:step>
 				<batch:step name="catching-errors" doc:id="24600861-5e62-4d1d-862a-2e7390307bc3" acceptPolicy="ONLY_FAILURES">
@@ -51,35 +51,24 @@ flatten(payload)]]></ee:set-variable>
 output application/json
 ---
 {
-    "message": Batch::getStepExceptions(),
-    "value": payload."Line Item Number"
+    "Error": (Batch::getStepExceptions()).localisedMessage[0],
+    "AccountID": payload."Line Item Number"
 }]]></ee:set-payload>
 						</ee:message>
 					</ee:transform>
 					<batch:aggregator doc:name="Batch Aggregator" doc:id="edae6f73-818c-498a-8b8f-f635857d2fc4" streaming="true">
-						<ee:transform doc:name="convert-payload" doc:id="8db3f58a-c742-4b32-9e54-0b91db473fe6" >
-							<ee:message >
-								<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
----
-payload]]></ee:set-payload>
-							</ee:message>
-						</ee:transform>
 						<ee:transform doc:name="csv-format" doc:id="884b337b-208b-4360-beeb-04550cb254bd" >
 							<ee:message >
 								<ee:set-payload ><![CDATA[%dw 2.0
 output application/csv // header=true, separator= " \t "
 ---
-{
-    "Error": error.description,
-    "AccountID": payload."Line Item Number"
-}]]></ee:set-payload>
+payload]]></ee:set-payload>
 							</ee:message>
 							<ee:variables >
 								<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Error\\" ++ "Error-" ++ payload.value[0] ++ "-dev-" ++ now() as String {format: "yyyyMMdd"} ++ ".csv"]]></ee:set-variable>
+p('file.errorPath') ++ "Error-" ++ payload.value[0] ++ "-dev-" ++ now() as String {format: "yyyyMMdd"} ++ ".csv"]]></ee:set-variable>
 							</ee:variables>
 						</ee:transform>
 						<flow-ref doc:name="common-write-sub-flow" doc:id="cdc379de-7433-4e84-8af7-b4dcec990d5b" name="common-write-error-sub-flow"/>
@@ -87,25 +76,25 @@ output application/java
 				</batch:step>
 			</batch:process-records>
 			<batch:on-complete >
-				<logger level="INFO" doc:name="Logger" doc:id="c8ba4597-0880-40db-8b82-61e29109539a" />
+				<logger level="INFO" doc:name="on-complete-logger" doc:id="c8ba4597-0880-40db-8b82-61e29109539a" message="#[payload]"/>
 			</batch:on-complete>
 		</batch:job>
-		<logger level="INFO" doc:name="end-log" doc:id="589d5e84-2514-4a7a-807c-14e6cc145a91" />
+		<logger level="INFO" doc:name="end-log" doc:id="589d5e84-2514-4a7a-807c-14e6cc145a91" message='correlationID:#[vars.correlationID], message : "completed-salesforce-opportunity-main-flow"'/>
 	</flow>
 	<sub-flow name="datapipe-vs-others-sub_Flow" doc:id="7f60195c-f7ba-4c3d-93e5-74a007c8f665" >
-		<logger level="INFO" doc:name="start-log" doc:id="aaa04750-1a6b-4391-bf00-4a6ee55ab313" />
+		<logger level="INFO" doc:name="start-log" doc:id="aaa04750-1a6b-4391-bf00-4a6ee55ab313" message='correlationID:#[vars.correlationID], message : "started-datapipe-vs-others-sub_Flow"'/>
 		<choice doc:name="Choice" doc:id="fedc46b5-a741-4284-a52d-a69be1ee17d7" >
-			<when expression='#[vars.val."Invoice Source" == "Datapipe"]'>
+			<when expression='#[vars.val."Invoice Source"[0] == "Datapipe"]'>
 				<flow-ref doc:name="datapipe-sub-flow" doc:id="2af90216-e01f-4fbf-984f-1d05bd96b977" name="datapipe-sub-flow"/>
 			</when>
 			<otherwise >
 				<flow-ref doc:name="us-cloud-sub-flow" doc:id="656ef5f3-353d-474d-bb76-e667b4c42034" name="us-cloud-sub-flow"/>
 			</otherwise>
 		</choice>
-		<logger level="INFO" doc:name="end-log" doc:id="b3c0274f-7456-4c33-b0b7-fc9dd231442b" />
+		<logger level="INFO" doc:name="end-log" doc:id="b3c0274f-7456-4c33-b0b7-fc9dd231442b" message='correlationID:#[vars.correlationID], message : "completed-datapipe-vs-others-sub_Flow"'/>
 	</sub-flow>
 	<sub-flow name="write-operation-txsta-txta-file-sub-flow" doc:id="6f1f2114-7112-42a4-bb3b-c47c0b5b9d3d" >
-		<logger level="INFO" doc:name="start-log" doc:id="f50cd152-2a62-401f-b9b4-429785f6e0b8" />
+		<logger level="INFO" doc:name="start-log" doc:id="f50cd152-2a62-401f-b9b4-429785f6e0b8" message='correlationID:#[vars.correlationID], message : "started-write-operation-txsta-txta-file-sub-flow"'/>
 		<scatter-gather doc:name="Scatter-Gather" doc:id="eeb6ac61-ac23-4e9f-a709-d094581e664a" >
 			<route >
 				<ee:transform doc:name="Datapipe-payload" doc:id="d6b65c10-2faf-45ab-a7a5-a7f5e2bd7873">
@@ -116,7 +105,7 @@ output application/java
 						<ee:set-variable variableName="path"><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "DP-TXSTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} 
+p('file.writePath') ++ "cust_TXSTA_dev_" ++ now() as String {format: "yyyyMMdd"} 
 ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
 					</ee:variables>
 				</ee:transform>
@@ -129,7 +118,7 @@ output application/java
 						<ee:set-variable variableName="path"><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "DP-TXTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
+p('file.writePath') ++ "TXTA_dev_" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
 					</ee:variables>
 				</ee:transform>
 				<flow-ref doc:name="common-write-txsta-and-txta-file-sub-flow" doc:id="5259bad2-673b-48a8-a5ee-b18176eae8df" name="common-write-txsta-and-txta-file-sub-flow"/>
@@ -143,7 +132,7 @@ output application/java
 						<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "SF-TXSTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} 
+p('file.writePath') ++ "cust_TXSTA_dev_" ++ now() as String {format: "yyyyMMdd"} 
 ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
 					</ee:variables>
 				</ee:transform>
@@ -156,12 +145,12 @@ output application/java
 						<ee:set-variable variableName="path" ><![CDATA[%dw 2.0
 output application/java
 ---
-"C:\Users\pkumar\IMPORTANT AND ADVANCED TOPICS\SF\Write\\" ++ "SF-TXTA-" ++ "dev-" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
+p('file.writePath') ++ "TXTA_dev_" ++ now() as String {format: "yyyyMMdd"} ++ "_" ++ now() as String {format: "HHmmSS"} ++ "_" ++ now() as String {format: "MMMMdd"} ++ ".csv"]]></ee:set-variable>
 					</ee:variables>
 				</ee:transform>
 				<flow-ref doc:name="common-write-txsta-and-txta-file-sub-flow" doc:id="9d8cfa2b-eed5-421c-a47a-1446aee1b696" name="common-write-txsta-and-txta-file-sub-flow"/>
 			</route>
 		</scatter-gather>
-		<logger level="INFO" doc:name="end-log" doc:id="6e254776-09bd-4e19-bb75-7a8a82f9ca29" />
+		<logger level="INFO" doc:name="end-log" doc:id="6e254776-09bd-4e19-bb75-7a8a82f9ca29" message='correlationID:#[vars.correlationID], message : "completed-write-operation-txsta-txta-file-sub-flow"'/>
 	</sub-flow>
 </mule>

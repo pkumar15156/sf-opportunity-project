@@ -210,6 +210,34 @@ type auto_6f1f2114_7112_42a4_bb3b_c47c0b5b9d3d_Output_Variables_finalResponse = 
 
 ]]></types:shape>
     </types:type>
+    <types:type name="csv-payload" format="csv">
+      <types:shape format="weave" example="examples/test.csv"><![CDATA[%dw 2.0
+
+type csv_payload = Array<{| "Account Number|Invoice Number|Invoice Date|Invoice Time Month Key|Invoice Source|Transaction Type|Amount|Currency Code|Device Number|Product Group|Product Type|Product Type Charge Type|Aging Bucket|Account Key|Line Of Business|First Invoice Date|Contract End Date|Line Item Number|GL Account|GL Product Code|Proserv Project ID|Commission Flag|Reserved Field 9|Reserved Field 10": String |}> {"isQuotedString": "false",
+"header": "true",
+"headerLineNumber": "0"}
+
+]]></types:shape>
+      <types:properties>
+        <types:property name="headerLineNumber" value="0"/>
+        <types:property name="header" value="true"/>
+        <types:property name="isQuotedString" value="false"/>
+      </types:properties>
+    </types:type>
+    <types:type name="csv-lookup-file" format="csv">
+      <types:shape format="weave" example="examples/DPTransactionInfo.csv"><![CDATA[%dw 2.0
+
+type csv_lookup_file = Array<{|  ParticipantID: String,   OpportunityNumber: String,   FinalOpportunityType: String,   CloseDate: String,   PartnerAccountName: String,   PartnerAccountRVExtId: String,   PartnerAccountId: String,   PartnerAccountOwner: String,   PartnerAccountOwnerRole: String,   PartnerContractType: String,   CommissionRole: String,   OracleVendorId: String,   PartnerType: String,   TierLevel: String,   CampaignCode: String,   PartnerAccount: String,   PartnerRole: String,   PartnerAccountType: String,   PartnerAccountSubType: String,   OpportunityCategory: String|}> {"isQuotedString": "false",
+"header": "true",
+"headerLineNumber": "0"}
+
+]]></types:shape>
+      <types:properties>
+        <types:property name="headerLineNumber" value="0"/>
+        <types:property name="header" value="true"/>
+        <types:property name="isQuotedString" value="false"/>
+      </types:properties>
+    </types:type>
   </types:catalog>
   <types:enrichment select="#7f60195c-f7ba-4c3d-93e5-74a007c8f665">
     <types:processor-declaration>

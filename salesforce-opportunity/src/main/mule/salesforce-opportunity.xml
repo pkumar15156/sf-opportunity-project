@@ -51,7 +51,7 @@ flatten(payload)]]></ee:set-variable>
 output application/json
 ---
 {
-    "Error": (Batch::getStepExceptions()).localisedMessage[0],
+    "Error": (Batch::getStepExceptions()).message.localisedMessage[0],
     "AccountID": payload."Line Item Number"
 }]]></ee:set-payload>
 						</ee:message>
